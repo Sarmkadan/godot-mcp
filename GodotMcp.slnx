@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GodotMcp.Core/GodotMcp.Core.csproj" />
+    <Project Path="src/GodotMcp.Server/GodotMcp.Server.csproj" />
+  </Folder>
+</Solution>
