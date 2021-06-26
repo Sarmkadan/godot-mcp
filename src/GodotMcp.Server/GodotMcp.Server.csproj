@@ -6,7 +6,22 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <RootNamespace>GodotMcp.Server</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>godot-mcp</ToolCommandName>
+    <PackageId>GodotMcp</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Vladyslav Zaiets</Authors>
+    <Company>Vladyslav Zaiets</Company>
+    <Description>MCP server for Godot 4 projects: scene tree inspection, node and property editing, resource and script tools - works on project files directly, no Godot install required.</Description>
+    <PackageTags>godot;mcp;gamedev;dotnet;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Sarmkadan/godot-mcp</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Sarmkadan/godot-mcp</PackageProjectUrl>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GodotMcp.Core\GodotMcp.Core.csproj" />
     <PackageReference Include="ModelContextProtocol" Version="2.0.0-preview.2" />
