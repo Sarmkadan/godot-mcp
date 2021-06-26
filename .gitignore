@@ -3,3 +3,6 @@ obj/
 *.user
 .vs/
 .idea/
+TestResults/
+BenchmarkDotNet.Artifacts/
+.aider*
