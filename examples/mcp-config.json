@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "godot": {
+      "command": "godot-mcp",
+      "args": ["/path/to/your/godot/project"]
+    }
+  }
+}

@@ -3,4 +3,7 @@
     <Project Path="src/GodotMcp.Core/GodotMcp.Core.csproj" />
     <Project Path="src/GodotMcp.Server/GodotMcp.Server.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GodotMcp.Tests/GodotMcp.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node2D"]
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(64.0, 64.0)
+
+[node name="Sprite" type="Sprite2D" parent="Player"]
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Score" type="Label" parent="Hud"]
+text = "0"
