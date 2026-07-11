@@ -3,14 +3,26 @@ using GodotMcp.Core.Project;
 
 namespace GodotMcp.Core.Scenes;
 
-public sealed class SceneEditor(GodotProject project, string scenePath)
+public sealed class SceneEditor
 {
-    public GodotProject Project { get; } = project;
-    public string ScenePath { get; } = scenePath;
-    public TscnDocument Document { get; } = project.LoadDocument(scenePath);
+    public SceneEditor(GodotProject project, string scenePath)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scenePath);
+        Project = project;
+        ScenePath = scenePath;
+        Document = project.LoadDocument(scenePath);
+    }
+
+    public GodotProject Project { get; }
+    public string ScenePath { get; }
+    public TscnDocument Document { get; }
 
     public TscnSection AddNode(string name, string type, string parentPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentNullException.ThrowIfNull(parentPath);
         if (SceneTreeBuilder.FindNodeSection(Document, parentPath) is null && parentPath != ".")
             throw new InvalidOperationException($"Parent node '{parentPath}' not found in {ScenePath}");
         var section = new TscnSection("node");
@@ -51,6 +63,8 @@ public sealed class SceneEditor(GodotProject project, string scenePath)
 
     public string AddExtResource(string type, string resPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentException.ThrowIfNullOrWhiteSpace(resPath);
         var existing = Document.ExtResources.FirstOrDefault(s => s.GetAttributeString("path") == resPath);
         if (existing is not null) return existing.GetAttributeString("id") ?? "";
         var index = Document.ExtResources.Count() + 1;

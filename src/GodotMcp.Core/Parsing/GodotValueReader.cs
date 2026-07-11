@@ -8,9 +8,15 @@ public sealed class GodotParseException(string message, int position) : Exceptio
     public int Position { get; } = position;
 }
 
-public sealed class GodotValueReader(string text)
+public sealed class GodotValueReader
 {
-    readonly string _text = text;
+    public GodotValueReader(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _text = text;
+    }
+
+    readonly string _text;
     public int Position { get; private set; }
     public bool AtEnd => Position >= _text.Length;
     char Current => _text[Position];

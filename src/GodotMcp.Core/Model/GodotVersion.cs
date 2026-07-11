@@ -1,17 +1,20 @@
+using System.Globalization;
+
 namespace GodotMcp.Core.Model;
 
 public readonly record struct GodotVersion(int Major, int Minor, int Patch = 0, string Status = "stable")
 {
     public static GodotVersion Parse(string text)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
         var parts = text.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var major = parts.Length > 0 && int.TryParse(parts[0], out var ma) ? ma : 0;
-        var minor = parts.Length > 1 && int.TryParse(parts[1], out var mi) ? mi : 0;
+        var major = parts.Length > 0 && int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var ma) ? ma : 0;
+        var minor = parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var mi) ? mi : 0;
         var patch = 0;
         var status = "stable";
         for (var i = 2; i < parts.Length; i++)
         {
-            if (int.TryParse(parts[i], out var p)) patch = p;
+            if (int.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var p)) patch = p;
             else status = parts[i];
         }
         return new GodotVersion(major, minor, patch, status);

@@ -73,7 +73,7 @@ public sealed record GodotExecutable(string Path)
         catch (OperationCanceledException)
         {
             timedOut = !cancellationToken.IsCancellationRequested;
-            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            try { process.Kill(entireProcessTree: true); } catch (Exception) { /* process may have already exited */ }
             cancellationToken.ThrowIfCancellationRequested();
         }
         stopwatch.Stop();

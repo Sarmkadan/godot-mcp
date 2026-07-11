@@ -5,9 +5,15 @@ using GodotMcp.Core.Scenes;
 
 namespace GodotMcp.Core.Project;
 
-public sealed partial class GodotProject(string rootPath)
+public sealed partial class GodotProject
 {
-    public string RootPath { get; } = Path.GetFullPath(rootPath);
+    public GodotProject(string rootPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        RootPath = Path.GetFullPath(rootPath);
+    }
+
+    public string RootPath { get; }
     public string ProjectFilePath => Path.Combine(RootPath, "project.godot");
     public bool Exists => File.Exists(ProjectFilePath);
 
@@ -55,12 +61,14 @@ public sealed partial class GodotProject(string rootPath)
 
     public string ResolveResPath(string resPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(resPath);
         var relative = resPath.StartsWith("res://") ? resPath["res://".Length..] : resPath.TrimStart('/');
         return Path.GetFullPath(Path.Combine(RootPath, relative.Replace('/', Path.DirectorySeparatorChar)));
     }
 
     public string ToResPath(string absolutePath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(absolutePath);
         var relative = Path.GetRelativePath(RootPath, Path.GetFullPath(absolutePath));
         return "res://" + relative.Replace(Path.DirectorySeparatorChar, '/');
     }
