@@ -61,6 +61,80 @@ public sealed class SceneEditor
     public GodotValue? GetNodeProperty(string nodePath, string property) =>
         SceneTreeBuilder.FindNodeSection(Document, nodePath)?.GetProperty(property);
 
+    public void RenameNode(string nodePath, string newName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        if (newName.Contains('/') || newName.Contains(':') || newName.Contains('@'))
+            throw new ArgumentException($"'{newName}' is not a valid node name", nameof(newName));
+        var section = SceneTreeBuilder.FindNodeSection(Document, nodePath)
+            ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
+        var isRoot = section.GetAttributeString("parent") is null;
+        var newPath = isRoot
+            ? "."
+            : nodePath.Contains('/') ? nodePath[..(nodePath.LastIndexOf('/') + 1)] + newName : newName;
+        if (!isRoot && SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+            throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+        section.SetAttribute("name", new GodotString(newName));
+        if (isRoot) return;
+        var oldPrefix = nodePath + "/";
+        var newPrefix = newPath + "/";
+        string Rewrite(string path) =>
+            path == nodePath ? newPath : path.StartsWith(oldPrefix) ? newPrefix + path[oldPrefix.Length..] : path;
+        foreach (var node in Document.Nodes)
+        {
+            if (node.GetAttributeString("parent") is { } parent && Rewrite(parent) is var rewritten && rewritten != parent)
+                node.SetAttribute("parent", new GodotString(rewritten));
+        }
+        foreach (var connection in Document.Connections)
+        {
+            foreach (var key in (string[])["from", "to"])
+            {
+                var value = connection.GetAttribute(key) switch
+                {
+                    GodotString s => s.Value,
+                    GodotNodePath p => p.Value,
+                    _ => null
+                };
+                if (value is not null && Rewrite(value) is var updated && updated != value)
+                    connection.SetAttribute(key, new GodotString(updated));
+            }
+        }
+    }
+
+    public TscnSection ConnectSignal(string signal, string fromPath, string toPath, string method)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(signal);
+        ArgumentException.ThrowIfNullOrWhiteSpace(method);
+        if (SceneTreeBuilder.FindNodeSection(Document, fromPath) is null)
+            throw new InvalidOperationException($"Node '{fromPath}' not found in {ScenePath}");
+        if (SceneTreeBuilder.FindNodeSection(Document, toPath) is null)
+            throw new InvalidOperationException($"Node '{toPath}' not found in {ScenePath}");
+        var existing = FindConnection(signal, fromPath, toPath, method);
+        if (existing is not null) return existing;
+        var section = new TscnSection("connection");
+        section.SetAttribute("signal", new GodotString(signal));
+        section.SetAttribute("from", new GodotString(fromPath));
+        section.SetAttribute("to", new GodotString(toPath));
+        section.SetAttribute("method", new GodotString(method));
+        Document.Sections.Add(section);
+        return section;
+    }
+
+    public bool DisconnectSignal(string signal, string fromPath, string toPath, string method)
+    {
+        var section = FindConnection(signal, fromPath, toPath, method);
+        if (section is null) return false;
+        Document.Sections.Remove(section);
+        return true;
+    }
+
+    TscnSection? FindConnection(string signal, string fromPath, string toPath, string method) =>
+        Document.Connections.FirstOrDefault(c =>
+            c.GetAttributeString("signal") == signal &&
+            c.GetAttributeString("from") == fromPath &&
+            c.GetAttributeString("to") == toPath &&
+            c.GetAttributeString("method") == method);
+
     public string AddExtResource(string type, string resPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
