@@ -28,3 +28,19 @@ public sealed record ScriptResult(string Path, string Language, string? ClassNam
 public sealed record RunResult(int ExitCode, bool Succeeded, bool TimedOut, double DurationSeconds, string Stdout, string Stderr);
 
 public sealed record MutationResult(bool Changed, string ScenePath, string Detail);
+
+public sealed record NodeMatchResult(string ScenePath, string NodePath, string Name, string? Type);
+
+public sealed record ScriptUsageResult(string ScenePath, string NodePath, string NodeName);
+
+public sealed record IssueResult(string Severity, string Code, string Message);
+
+public sealed record ValidationResult(string ScenePath, bool Valid, int Errors, int Warnings, IReadOnlyList<IssueResult> Issues)
+{
+    public static ValidationResult From(string scenePath, IReadOnlyList<Core.Scenes.SceneIssue> issues) => new(
+        scenePath,
+        issues.All(i => i.Severity != Core.Scenes.IssueSeverity.Error),
+        issues.Count(i => i.Severity == Core.Scenes.IssueSeverity.Error),
+        issues.Count(i => i.Severity == Core.Scenes.IssueSeverity.Warning),
+        issues.Select(i => new IssueResult(i.Severity.ToString(), i.Code, i.Message)).ToList());
+}

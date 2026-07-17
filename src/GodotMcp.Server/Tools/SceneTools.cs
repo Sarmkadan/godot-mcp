@@ -44,6 +44,35 @@ public sealed class SceneTools(ProjectLocator locator)
         return new MutationResult(removed, scenePath, removed ? $"Removed node '{nodePath}'" : $"Node '{nodePath}' not found");
     }
 
+    [McpServerTool(Name = "godot_rename_node"), Description("Rename a node and rewrite all affected parent paths and signal connection endpoints, then save the file.")]
+    public MutationResult RenameNode(string scenePath, [Description("Current node path, '.' for the root")] string nodePath, [Description("New node name (no slashes)")] string newName, string? projectPath = null)
+    {
+        var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
+        editor.RenameNode(nodePath, newName);
+        editor.Save();
+        return new MutationResult(true, scenePath, $"Renamed node '{nodePath}' to '{newName}'");
+    }
+
+    [McpServerTool(Name = "godot_connect_signal"), Description("Add a signal connection between two nodes in a scene and save the file. No-op if the identical connection already exists.")]
+    public MutationResult ConnectSignal(string scenePath, [Description("Signal name, e.g. pressed, body_entered")] string signal, [Description("Emitting node path, '.' for the root")] string fromPath, [Description("Receiving node path")] string toPath, [Description("Handler method name, e.g. _on_button_pressed")] string method, string? projectPath = null)
+    {
+        var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
+        editor.ConnectSignal(signal, fromPath, toPath, method);
+        editor.Save();
+        return new MutationResult(true, scenePath, $"Connected {fromPath}.{signal} -> {toPath}.{method}");
+    }
+
+    [McpServerTool(Name = "godot_disconnect_signal"), Description("Remove a signal connection from a scene and save the file.")]
+    public MutationResult DisconnectSignal(string scenePath, string signal, string fromPath, string toPath, string method, string? projectPath = null)
+    {
+        var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
+        var removed = editor.DisconnectSignal(signal, fromPath, toPath, method);
+        if (removed) editor.Save();
+        return new MutationResult(removed, scenePath, removed
+            ? $"Disconnected {fromPath}.{signal} -> {toPath}.{method}"
+            : "No matching connection found");
+    }
+
     [McpServerTool(Name = "godot_set_node_property"), Description("Set a property on a scene node using Godot text syntax (e.g. 'Vector2(10, 20)', '\"hello\"', 'true') and save the file.")]
     public MutationResult SetNodeProperty(string scenePath, string nodePath, string property, [Description("Value in Godot .tscn literal syntax")] string value, string? projectPath = null)
     {
