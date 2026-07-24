@@ -3,7 +3,7 @@ using System.Text;
 
 namespace GodotMcp.Core.Parsing;
 
-public enum GodotValueKind { Null, Bool, Int, Float, String, StringName, NodePath, Array, Dictionary, Constructor, Identifier }
+public enum GodotValueKind { Null, Bool, Int, Float, String, StringName, NodePath, Array, Dictionary, Constructor, Identifier, Raw }
 
 public abstract record GodotValue
 {
@@ -35,6 +35,21 @@ public abstract record GodotValue
         }
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Creates a raw value that preserves the original text without parsing.
+    /// </summary>
+    public static GodotValue Raw(string rawText) => new GodotRawValue(rawText);
+}
+
+/// <summary>
+/// Represents a value that couldn't be parsed into a structured GodotValue.
+/// Preserves the original text exactly for lossless round-trips.
+/// </summary>
+public sealed record GodotRawValue(string RawText) : GodotValue
+{
+    public override GodotValueKind Kind => GodotValueKind.Identifier;
+    public override void Write(StringBuilder sb) => sb.Append(RawText);
 }
 
 public sealed record GodotNull : GodotValue

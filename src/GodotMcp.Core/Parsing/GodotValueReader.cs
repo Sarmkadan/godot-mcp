@@ -239,4 +239,19 @@ public sealed class GodotValueReader
         }
         return new GodotDictionary(entries);
     }
+
+    GodotValue ReadRawValue()
+    {
+        var start = Position;
+        // Read until we hit a delimiter that would end a property value
+        while (!AtEnd)
+        {
+            var c = Current;
+            if (char.IsWhiteSpace(c) || c == '\n' || c == '\r' || c == ';')
+                break;
+            Position++;
+        }
+        var rawText = _text.Substring(start, Position - start).Trim();
+        return new GodotRawValue(rawText);
+    }
 }
