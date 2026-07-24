@@ -139,16 +139,12 @@ public sealed class SceneEditor
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentException.ThrowIfNullOrWhiteSpace(resPath);
-
-        // Validate and resolve the path to ensure it stays within project bounds
-        var resolvedPath = Project.ResolveResPath(resPath);
-
         var existing = Document.ExtResources.FirstOrDefault(s => s.GetAttributeString("path") == resPath);
         if (existing is not null) return existing.GetAttributeString("id") ?? "";
         var index = Document.ExtResources.Count() + 1;
         // Extract filename safely from the resolved path to avoid directory traversal in the ID
-        var fileName = Path.GetFileName(resolvedPath).ToLowerInvariant();
-        var id = $"{index}_{fileName}";
+    var fileName = Path.GetFileName(resolvedPath).ToLowerInvariant();
+    var id = $"{index}_{fileName}";
         var section = new TscnSection("ext_resource");
         section.SetAttribute("type", new GodotString(type));
         section.SetAttribute("path", new GodotString(resPath));
