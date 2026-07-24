@@ -11,6 +11,7 @@ the script will forward the error output and exit with a non‑zero
 status code.
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
