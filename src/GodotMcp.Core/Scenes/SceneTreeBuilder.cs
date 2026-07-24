@@ -1,5 +1,6 @@
 using GodotMcp.Core.Model;
 using GodotMcp.Core.Parsing;
+using GodotMcp.Core.Project;
 
 namespace GodotMcp.Core.Scenes;
 
@@ -7,13 +8,23 @@ public static class SceneTreeBuilder
 {
     static readonly HashSet<string> HeaderKeys = ["name", "type", "parent", "instance", "instance_placeholder", "owner", "index", "groups", "node_paths"];
 
+    /// <summary>
+    /// Builds a scene tree from a parsed document.
+    /// </summary>
+    /// <param name="document">The parsed scene document</param>
+    /// <param name="scenePath">The scene path (res:// format)</param>
+    /// <exception cref="ArgumentNullException">Thrown if document or scenePath is null</exception>
     public static SceneTree Build(TscnDocument document, string scenePath)
     {
+        // Create a PathResolver to validate external resource paths
+        // Note: scenePath is trusted as it comes from the project's own file structure
+        var pathResolver = new PathResolver(Path.GetDirectoryName(Path.GetFullPath(scenePath)) ?? ".");
+
         var externals = document.ExtResources
             .Select(s => new ResourceRef(
                 s.GetAttributeString("id") ?? "",
                 s.GetAttributeString("type") ?? "",
-                s.GetAttributeString("path") ?? "",
+                ValidateExternalResourcePath(s.GetAttributeString("path") ?? "", pathResolver),
                 s.GetAttributeString("uid")))
             .ToList();
         var subs = document.SubResources
@@ -94,4 +105,31 @@ public static class SceneTreeBuilder
     }
 
     public static bool IsHeaderKey(string key) => HeaderKeys.Contains(key);
+
+    /// <summary>
+    /// Validates and normalizes an external resource path to prevent directory traversal attacks.
+    /// </summary>
+    /// <param name="path">The resource path from the document</param>
+    /// <param name="pathResolver">Path resolver for the project</param>
+    /// <returns>Normalized and validated path</returns>
+    /// <exception cref="ArgumentException">Thrown if path is invalid or attempts to escape project</exception>
+    private static string ValidateExternalResourcePath(string path, PathResolver pathResolver)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException("External resource path cannot be null or empty", nameof(path));
+        }
+
+        // Validate the path is safe before resolving
+        if (!pathResolver.IsPathSafe(path))
+        {
+            throw new ArgumentException(
+                $"External resource path '{path}' contains invalid path traversal sequences",
+                nameof(path));
+        }
+
+        // Resolve the path to ensure it stays within project bounds
+        // This will throw ArgumentException if path attempts to escape
+        return pathResolver.Resolve(path);
+    }
 }

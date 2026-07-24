@@ -7,10 +7,13 @@ namespace GodotMcp.Core.Project;
 
 public sealed partial class GodotProject
 {
+    private readonly PathResolver _pathResolver;
+
     public GodotProject(string rootPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
         RootPath = Path.GetFullPath(rootPath);
+        _pathResolver = new PathResolver(RootPath);
     }
 
     public string RootPath { get; }
@@ -62,15 +65,13 @@ public sealed partial class GodotProject
     public string ResolveResPath(string resPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(resPath);
-        var relative = resPath.StartsWith("res://") ? resPath["res://".Length..] : resPath.TrimStart('/');
-        return Path.GetFullPath(Path.Combine(RootPath, relative.Replace('/', Path.DirectorySeparatorChar)));
+        return _pathResolver.Resolve(resPath);
     }
 
     public string ToResPath(string absolutePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(absolutePath);
-        var relative = Path.GetRelativePath(RootPath, Path.GetFullPath(absolutePath));
-        return "res://" + relative.Replace(Path.DirectorySeparatorChar, '/');
+        return _pathResolver.ToResPath(absolutePath);
     }
 
     public IEnumerable<string> EnumerateFiles(params string[] extensions)
