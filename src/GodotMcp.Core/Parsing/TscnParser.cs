@@ -4,6 +4,10 @@ public static class TscnParser
 {
     public static TscnDocument Parse(string text)
     {
+        ArgumentNullException.ThrowIfNull(text);
+        if (string.IsNullOrWhiteSpace(text))
+            throw new GodotParseException("Cannot parse an empty or whitespace-only TSCN document", 0);
+
         var reader = new GodotValueReader(text);
         reader.SkipWhitespaceAndComments();
         var descriptor = ParseSectionHeader(reader) ?? throw new GodotParseException("Missing descriptor section", 0);
@@ -28,7 +32,14 @@ public static class TscnParser
         return document;
     }
 
-    public static TscnDocument ParseFile(string path) => Parse(File.ReadAllText(path));
+    public static TscnDocument ParseFile(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"TSCN file not found: '{path}'", path);
+
+        return Parse(File.ReadAllText(path));
+    }
 
     static TscnSection? ParseSectionHeader(GodotValueReader reader)
     {
