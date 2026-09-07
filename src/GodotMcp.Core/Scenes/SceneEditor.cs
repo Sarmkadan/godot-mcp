@@ -132,6 +132,50 @@ public sealed class SceneEditor
         }
     }
 
+    public void MoveNode(string nodePath, string newParentPath)
+    {
+        var section = SceneTreeBuilder.FindNodeSection(Document, nodePath)
+            ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
+        if (newParentPath != "." && SceneTreeBuilder.FindNodeSection(Document, newParentPath) is null)
+            throw new InvalidOperationException($"Parent node '{newParentPath}' not found in {ScenePath}");
+        var oldPrefix = nodePath + "/";
+        if (newParentPath == nodePath || newParentPath.StartsWith(oldPrefix, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Cannot move node '{nodePath}' under itself or one of its descendants");
+        if (section.GetAttributeString("parent") is null)
+            throw new InvalidOperationException("The scene root node cannot be moved");
+
+        var name = section.GetAttributeString("name") ?? "";
+        var newPath = newParentPath == "." ? name : $"{newParentPath}/{name}";
+        if (newPath != nodePath && SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+            throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+
+        var newPrefix = newPath + "/";
+        string Rewrite(string path) =>
+            path == nodePath ? newPath : path.StartsWith(oldPrefix, StringComparison.Ordinal) ? newPrefix + path[oldPrefix.Length..] : path;
+
+        section.SetAttribute("parent", new GodotString(newParentPath));
+        foreach (var node in Document.Nodes)
+        {
+            if (ReferenceEquals(node, section)) continue;
+            if (node.GetAttributeString("parent") is { } parent && Rewrite(parent) is var rewritten && rewritten != parent)
+                node.SetAttribute("parent", new GodotString(rewritten));
+        }
+        foreach (var connection in Document.Connections)
+        {
+            foreach (var key in (string[])["from", "to"])
+            {
+                var value = connection.GetAttribute(key) switch
+                {
+                    GodotString s => s.Value,
+                    GodotNodePath p => p.Value,
+                    _ => null
+                };
+                if (value is not null && Rewrite(value) is var updated && updated != value)
+                    connection.SetAttribute(key, new GodotString(updated));
+            }
+        }
+    }
+
     public TscnSection ConnectSignal(string signal, string fromPath, string toPath, string method)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(signal);
