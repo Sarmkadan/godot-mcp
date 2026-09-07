@@ -25,11 +25,28 @@ public sealed class SceneEditor
         ArgumentNullException.ThrowIfNull(parentPath);
         if (SceneTreeBuilder.FindNodeSection(Document, parentPath) is null && parentPath != ".")
             throw new InvalidOperationException($"Parent node '{parentPath}' not found in {ScenePath}");
+        var nodePath = parentPath == "." ? name : $"{parentPath}/{name}";
+        if (SceneTreeBuilder.FindNodeSection(Document, nodePath) is not null)
+            throw new InvalidOperationException($"Node {nodePath} already exists in {ScenePath}");
         var section = new TscnSection("node");
         section.SetAttribute("name", new GodotString(name));
         section.SetAttribute("type", new GodotString(type));
         section.SetAttribute("parent", new GodotString(parentPath));
-        var insertAfter = Document.Sections.FindLastIndex(s => s.Name == "node");
+        var subtreePrefix = parentPath + "/";
+        var insertAfter = Document.Sections.FindLastIndex(s =>
+        {
+            if (s.Name != "node") return false;
+            var parent = s.GetAttributeString("parent");
+            var sectionName = s.GetAttributeString("name") ?? "";
+            var path = parent switch
+            {
+                null => ".",
+                "." => sectionName,
+                _ => $"{parent}/{sectionName}"
+            };
+            return parentPath == "." || path == parentPath || path.StartsWith(subtreePrefix, StringComparison.Ordinal);
+        });
+        if (insertAfter < 0) insertAfter = Document.Sections.FindLastIndex(s => s.Name == "node");
         if (insertAfter >= 0) Document.Sections.Insert(insertAfter + 1, section);
         else Document.Sections.Add(section);
         return section;
