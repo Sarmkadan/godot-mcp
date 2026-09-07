@@ -10,18 +10,51 @@ public sealed class HeadlessRunner(GodotProject project, GodotExecutable executa
 
     public Task<GodotRunResult> RunProjectAsync(string? scene = null, IReadOnlyList<string>? extraArgs = null, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
     {
+        // Validate scene path before adding to arguments
+        if (scene is not null)
+        {
+            Executable.ValidateScenePath(scene, Project.RootPath);
+        }
+
         var args = new List<string> { "--headless", "--path", Project.RootPath };
         if (scene is not null) args.Add(scene);
         if (extraArgs is not null) args.AddRange(extraArgs);
         return Executable.RunAsync(args, Project.RootPath, DefaultTimeout, onOutputLine, cancellationToken);
     }
 
-    public Task<GodotRunResult> RunScriptAsync(string scriptResPath, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default) =>
-        Executable.RunAsync(["--headless", "--path", Project.RootPath, "--script", scriptResPath], Project.RootPath, DefaultTimeout, onOutputLine, cancellationToken);
+    public Task<GodotRunResult> RunScriptAsync(string scriptResPath, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
+    {
+        // Validate script resource path
+        if (scriptResPath is not null)
+        {
+            Executable.ValidateScenePath(scriptResPath, Project.RootPath);
+        }
 
-    public Task<GodotRunResult> ImportResourcesAsync(CancellationToken cancellationToken = default) =>
-        Executable.RunAsync(["--headless", "--path", Project.RootPath, "--import"], Project.RootPath, DefaultTimeout, null, cancellationToken);
+        return Executable.RunAsync(
+            ["--headless", "--path", Project.RootPath, "--script", scriptResPath],
+            Project.RootPath,
+            DefaultTimeout,
+            onOutputLine,
+            cancellationToken);
+    }
 
-    public Task<GodotRunResult> QuitAfterFramesAsync(int frames, CancellationToken cancellationToken = default) =>
-        Executable.RunAsync(["--headless", "--path", Project.RootPath, "--quit-after", frames.ToString()], Project.RootPath, DefaultTimeout, null, cancellationToken);
+    public Task<GodotRunResult> ImportResourcesAsync(CancellationToken cancellationToken = default)
+    {
+        return Executable.RunAsync(
+            ["--headless", "--path", Project.RootPath, "--import"],
+            Project.RootPath,
+            DefaultTimeout,
+            null,
+            cancellationToken);
+    }
+
+    public Task<GodotRunResult> QuitAfterFramesAsync(int frames, CancellationToken cancellationToken = default)
+    {
+        return Executable.RunAsync(
+            ["--headless", "--path", Project.RootPath, "--quit-after", frames.ToString()],
+            Project.RootPath,
+            DefaultTimeout,
+            null,
+            cancellationToken);
+    }
 }
