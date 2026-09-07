@@ -40,10 +40,24 @@ public sealed class SceneEditor
         var section = SceneTreeBuilder.FindNodeSection(Document, nodePath);
         if (section is null) return false;
         var prefix = nodePath + "/";
+        bool ReferencesRemovedNode(TscnSection connection, string key)
+        {
+            var value = connection.GetAttribute(key) switch
+            {
+                GodotString s => s.Value,
+                GodotNodePath p => p.Value,
+                _ => null
+            };
+            return nodePath == "." || value == nodePath || value?.StartsWith(prefix) == true;
+        }
+        Document.Sections.RemoveAll(s =>
+            s.Name == "connection" &&
+            (ReferencesRemovedNode(s, "from") || ReferencesRemovedNode(s, "to")));
         Document.Sections.RemoveAll(s =>
             s.Name == "node" &&
-            s.GetAttributeString("parent") is { } parent &&
-            (parent == nodePath || parent.StartsWith(prefix)));
+            (nodePath == "." ||
+             s.GetAttributeString("parent") is { } parent &&
+             (parent == nodePath || parent.StartsWith(prefix))));
         Document.Sections.Remove(section);
         return true;
     }
