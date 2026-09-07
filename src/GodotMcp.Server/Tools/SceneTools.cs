@@ -53,6 +53,15 @@ public sealed class SceneTools(ProjectLocator locator)
         return new MutationResult(true, scenePath, $"Renamed node '{nodePath}' to '{newName}'");
     }
 
+    [McpServerTool(Name = "godot_move_node"), Description("Move a node and its descendants under a new parent, rewrite affected signal connection endpoints, and save the file.")]
+    public MutationResult MoveNode(string scenePath, [Description("Current node path")] string nodePath, [Description("New parent node path, '.' for the root")] string newParentPath, string? projectPath = null)
+    {
+        var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
+        editor.MoveNode(nodePath, newParentPath);
+        editor.Save();
+        return new MutationResult(true, scenePath, $"Moved node '{nodePath}' under '{newParentPath}'");
+    }
+
     [McpServerTool(Name = "godot_connect_signal"), Description("Add a signal connection between two nodes in a scene and save the file. No-op if the identical connection already exists.")]
     public MutationResult ConnectSignal(string scenePath, [Description("Signal name, e.g. pressed, body_entered")] string signal, [Description("Emitting node path, '.' for the root")] string fromPath, [Description("Receiving node path")] string toPath, [Description("Handler method name, e.g. _on_button_pressed")] string method, string? projectPath = null)
     {
