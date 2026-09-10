@@ -94,4 +94,13 @@ public sealed class SceneTools(ProjectLocator locator)
     [McpServerTool(Name = "godot_get_node_property"), Description("Get a single property value from a scene node in Godot text syntax.")]
     public string? GetNodeProperty(string scenePath, string nodePath, string property, string? projectPath = null) =>
         new SceneEditor(locator.Resolve(projectPath), scenePath).GetNodeProperty(nodePath, property)?.ToTscnString();
+
+    [McpServerTool(Name = "godot_duplicate_node"), Description("Duplicate a node and its descendants, inserting the copy after the original subtree, and save the file.")]
+    public MutationResult DuplicateNode(string scenePath, [Description("Node path to duplicate, '.' for the root")] string nodePath, [Description("New name for the duplicated root node (no slashes)")] string newName, string? projectPath = null)
+    {
+        var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
+        editor.DuplicateNode(nodePath, newName);
+        editor.Save();
+        return new MutationResult(true, scenePath, $"Duplicated node '{nodePath}' as '{newName}'");
+    }
 }
