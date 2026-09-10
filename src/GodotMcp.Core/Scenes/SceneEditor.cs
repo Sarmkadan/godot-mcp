@@ -132,6 +132,189 @@ public sealed class SceneEditor
         }
     }
 
+    public void DuplicateNode(string nodePath, string newName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        if (newName.Contains('/') || newName.Contains(':') || newName.Contains('@'))
+            throw new ArgumentException($"'{newName}' is not a valid node name", nameof(newName));
+
+        var sourceSection = SceneTreeBuilder.FindNodeSection(Document, nodePath)
+            ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
+
+        var sourceParent = sourceSection.GetAttributeString("parent");
+        var sourceName = sourceSection.GetAttributeString("name") ?? "";
+        var sourcePath = sourceParent == null ? "." :
+                         sourceParent == "." ? sourceName :
+                         $"{sourceParent}/{sourceName}";
+
+        var newPath = sourceParent == null ? "." :
+                      sourceParent == "." ? newName :
+                      $"{sourceParent}/{newName}";
+        if (SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+            throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+
+        // Helper to check if a node path is in the subtree rooted at subtreeRootPath
+        bool IsInSubtree(string path, string subtreeRootPath)
+        {
+            return path == subtreeRootPath || path.StartsWith(subtreeRootPath + "/", StringComparison.Ordinal);
+        }
+
+        // Collect all node sections in the subtree (including root) in document order
+        var subtreeNodes = new List<TscnSection>();
+        foreach (var section in Document.Sections)
+        {
+            if (section.Name != "node") continue;
+            var parent = section.GetAttributeString("parent");
+            var name = section.GetAttributeString("name") ?? "";
+            var path = parent == null ? "." :
+                       parent == "." ? name :
+                       $"{parent}/{name}";
+            if (IsInSubtree(path, nodePath))
+                subtreeNodes.Add(section);
+        }
+
+        // Create mapping from original node section to duplicated node section
+        var mapping = new Dictionary<TscnSection, TscnSection>();
+        var duplicatedNodes = new List<TscnSection>();
+
+        // First pass: duplicate nodes and set up mapping
+        foreach (var original in subtreeNodes)
+        {
+            var copy = new TscnSection(original.Name);
+            // Copy attributes
+            foreach (var attr in original.Attributes)
+                copy.SetAttribute(attr.Key, attr.Value);
+            // Copy properties
+            foreach (var prop in original.Properties)
+                copy.SetProperty(prop.Key, prop.Value);
+
+            if (original == sourceSection)
+            {
+                // Root of the duplicated subtree: set new name
+                copy.SetAttribute("name", new GodotString(newName));
+                // Parent remains the same as source's parent (so it becomes a sibling)
+            }
+            else
+            {
+                // For descendants, update parent attribute to point to duplicated parent
+                var originalParentValue = original.GetAttributeString("parent");
+                if (originalParentValue is not null)
+                {
+                    // Find the original parent section
+                    var originalParentSection = Document.Sections.FirstOrDefault(s =>
+                        s.Name == "node" &&
+                        s.GetAttributeString("name") == originalParentValue.Split('/').Last() &&
+                        (s.GetAttributeString("parent") ?? "") ==
+                        (originalParentValue.Contains('/') ?
+                            string.Join("/", originalParentValue.Split('/').Take(originalParentValue.Split('/').Length - 1)) :
+                        ""));
+                    // Actually, we can use the mapping: the original parent must be in the subtree (since we're processing in order and parent comes before children)
+                    // But to be safe, we'll find the duplicated section for the original parent via mapping
+                    var originalParentSectionByPath = SceneTreeBuilder.FindNodeSection(Document, originalParentValue);
+                    if (originalParentSectionByPath is not null && mapping.TryGetValue(originalParentSectionByPath, out var duplicatedParent))
+                    {
+                        var duplicatedParentName = duplicatedParent.GetAttributeString("name") ?? "";
+                        var duplicatedParentParent = duplicatedParent.GetAttributeString("parent");
+                        var duplicatedParentPath = duplicatedParentParent == null ? "." :
+                                                   duplicatedParentParent == "." ? duplicatedParentName :
+                                                   $"{duplicatedParentParent}/{duplicatedParentName}";
+                        copy.SetAttribute("parent", new GodotString(duplicatedParentPath));
+                    }
+                    else
+                    {
+                        // Fallback: if parent not found in mapping (shouldn't happen for valid subtree), keep original parent
+                        copy.SetAttribute("parent", new GodotString(originalParentValue));
+                    }
+                }
+            }
+
+            mapping[original] = copy;
+            duplicatedNodes.Add(copy);
+        }
+
+        // Second pass: duplicate connections that are entirely within the subtree
+        var duplicatedConnections = new List<TscnSection>();
+        foreach (var connection in Document.Connections)
+        {
+            var from = connection.GetAttributeString("from");
+            var to = connection.GetAttributeString("to");
+            if (from is not null && to is not null &&
+                IsInSubtree(from, nodePath) && IsInSubtree(to, nodePath))
+            {
+                var copy = new TscnSection(connection.Name);
+                // Copy attributes
+                foreach (var attr in connection.Attributes)
+                    copy.SetAttribute(attr.Key, attr.Value);
+                // Update from and to to point to duplicated nodes
+                var fromSection = SceneTreeBuilder.FindNodeSection(Document, from);
+                var toSection = SceneTreeBuilder.FindNodeSection(Document, to);
+                if (fromSection is not null && mapping.TryGetValue(fromSection, out var duplicatedFrom))
+                {
+                    var duplicatedFromName = duplicatedFrom.GetAttributeString("name") ?? "";
+                    var duplicatedFromParent = duplicatedFrom.GetAttributeString("parent");
+                    var duplicatedFromPath = duplicatedFromParent == null ? "." :
+                                             duplicatedFromParent == "." ? duplicatedFromName :
+                                             $"{duplicatedFromParent}/{duplicatedFromName}";
+                    copy.SetAttribute("from", new GodotString(duplicatedFromPath));
+                }
+                else
+                {
+                    copy.SetAttribute("from", new GodotString(from));
+                }
+                if (toSection is not null && mapping.TryGetValue(toSection, out var duplicatedTo))
+                {
+                    var duplicatedToName = duplicatedTo.GetAttributeString("name") ?? "";
+                    var duplicatedToParent = duplicatedTo.GetAttributeString("parent");
+                    var duplicatedToPath = duplicatedToParent == null ? "." :
+                                           duplicatedToParent == "." ? duplicatedToName :
+                                           $"{duplicatedToParent}/{duplicatedToName}";
+                    copy.SetAttribute("to", new GodotString(duplicatedToPath));
+                }
+                else
+                {
+                    copy.SetAttribute("to", new GodotString(to));
+                }
+                // Copy other attributes (signal, method) are already copied above
+                duplicatedConnections.Add(copy);
+            }
+        }
+
+        // Insert duplicated nodes after the last node of the original subtree
+        int lastIndex = -1;
+        for (int i = 0; i < Document.Sections.Count; i++)
+        {
+            var section = Document.Sections[i];
+            if (section.Name != "node") continue;
+            var parent = section.GetAttributeString("parent");
+            var name = section.GetAttributeString("name") ?? "";
+            var path = parent == null ? "." :
+                       parent == "." ? name :
+                       $"{parent}/{name}";
+            if (IsInSubtree(path, nodePath))
+                lastIndex = i;
+        }
+
+        if (lastIndex >= 0)
+        {
+            // Insert duplicated nodes in reverse order so they appear in correct order
+            for (int i = duplicatedNodes.Count - 1; i >= 0; i--)
+            {
+                Document.Sections.Insert(lastIndex + 1, duplicatedNodes[i]);
+            }
+        }
+        else
+        {
+            // Fallback: insert at end
+            foreach (var node in duplicatedNodes)
+                Document.Sections.Add(node);
+        }
+
+        // Insert duplicated connections at the end of the document
+        foreach (var conn in duplicatedConnections)
+            Document.Sections.Add(conn);
+    }
+
     public void MoveNode(string nodePath, string newParentPath)
     {
         var section = SceneTreeBuilder.FindNodeSection(Document, nodePath)
