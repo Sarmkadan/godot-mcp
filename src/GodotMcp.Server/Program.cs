@@ -3,6 +3,7 @@ using GodotMcp.Server;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 var config = ExecutableConfig.FromArgs(args);
 
@@ -28,9 +29,25 @@ else
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
-builder.Services.AddSingleton(new ProjectLocator(args.FirstOrDefault() ?? Environment.GetEnvironmentVariable("GODOT_PROJECT") ?? Environment.CurrentDirectory));
+var projectRoot = args.FirstOrDefault() ?? Environment.GetEnvironmentVariable("GODOT_PROJECT") ?? Environment.CurrentDirectory;
+builder.Services.AddSingleton(new ProjectLocator(projectRoot));
+builder.Services.AddHeadlessRunnerOptions(builder.Configuration, projectRoot);
 builder.Services
     .AddMcpServer(o => o.ServerInfo = new() { Name = "godot-mcp", Version = "0.1.0" })
     .WithStdioServerTransport()
     .WithToolsFromAssembly();
-await builder.Build().RunAsync();
+var host = builder.Build();
+try
+{
+    await host.StartAsync();
+}
+catch (OptionsValidationException ex)
+{
+    Console.Error.WriteLine("Invalid HeadlessRunner configuration:");
+    foreach (var failure in ex.Failures)
+    {
+        Console.Error.WriteLine($"  - {failure}");
+    }
+    Environment.Exit(1);
+}
+await host.WaitForShutdownAsync();
