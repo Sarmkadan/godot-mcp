@@ -25,10 +25,7 @@ public sealed class HeadlessRunner(GodotProject project, GodotExecutable executa
     public Task<GodotRunResult> RunScriptAsync(string scriptResPath, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
     {
         // Validate script resource path
-        if (scriptResPath is not null)
-        {
-            Executable.ValidateScenePath(scriptResPath, Project.RootPath);
-        }
+        Executable.ValidateScenePath(scriptResPath, Project.RootPath);
 
         return Executable.RunAsync(
             ["--headless", "--path", Project.RootPath, "--script", scriptResPath],
