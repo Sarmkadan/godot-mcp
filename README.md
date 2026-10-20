@@ -27,6 +27,371 @@ Add to your MCP client config (Claude Code, Cursor, or any stdio MCP client):
 
 The argument is the project root (the folder containing `project.godot`). Alternatively set the `GODOT_PROJECT` environment variable, or omit both to use the current directory. Every tool also accepts an explicit `projectPath` parameter, so one server can serve multiple projects.
 
+## Getting Started
+
+Step by step, from a clean checkout to a working MCP connection. The commands were run on Linux against this repository; the Claude Desktop config and the Windows paths were not exercised.
+
+### 1. Build
+
+Requires the .NET 10 SDK.
+
+```sh
+git clone https://github.com/Sarmkadan/godot-mcp.git
+cd godot-mcp
+dotnet build -c Release
+dotnet test -c Release --no-build
+```
+
+Nine integration tests that need a real `godot` binary are marked `Skip` in `HeadlessRunnerIntegrationTests.cs`; the remaining tests should pass (134 passed, 9 skipped at the time of writing).
+
+The server binary is the apphost produced by the build:
+
+```
+src/GodotMcp.Server/bin/Release/net10.0/GodotMcp.Server        (Linux/macOS)
+src/GodotMcp.Server/bin/Release/net10.0/GodotMcp.Server.exe    (Windows)
+```
+
+Optional: pack it as a local dotnet tool, which gives you a `godot-mcp` command instead of a path:
+
+```sh
+dotnet pack src/GodotMcp.Server -c Release -o artifacts
+dotnet tool install --tool-path "$HOME/.godot-mcp-tool" --add-source artifacts GodotMcp
+"$HOME/.godot-mcp-tool/godot-mcp" /path/to/your/godot/project
+```
+
+### 2. Run
+
+MCP clients start the server for you, so you normally never run it by hand. To check it starts, run it against a project; it logs to stderr and then waits for MCP messages on stdin (press Ctrl+C to stop):
+
+```sh
+dotnet run --project src/GodotMcp.Server -c Release -- /path/to/your/godot/project
+```
+
+The `WARNING: No executable allowlist configured` line is expected. The allowlist only gates the run tools (`godot_run_headless`, `godot_import_resources`); the analysis tools do not need it. To enable those, pass `--allowlist-executable=/path/to/godot`.
+
+### 3. Connect a client
+
+Use absolute paths in client configs. Replace `/absolute/path/to/godot-mcp` and `/absolute/path/to/your/godot/project` with your own.
+
+**Claude Desktop** - add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`), then restart the app:
+
+```json
+{
+  "mcpServers": {
+    "godot": {
+      "command": "/absolute/path/to/godot-mcp/src/GodotMcp.Server/bin/Release/net10.0/GodotMcp.Server",
+      "args": ["/absolute/path/to/your/godot/project"]
+    }
+  }
+}
+```
+
+On Windows, point `command` at `GodotMcp.Server.exe` and escape backslashes in the JSON (`"C:\\src\\godot-mcp\\..."`).
+
+**Claude Code** - run this once from any directory; it writes a `.mcp.json` into the current directory, so run it from your Godot project root to share the config with your team:
+
+```sh
+claude mcp add --scope project godot -- /absolute/path/to/godot-mcp/src/GodotMcp.Server/bin/Release/net10.0/GodotMcp.Server /absolute/path/to/your/godot/project
+```
+
+Resulting `.mcp.json` (verified with `claude mcp add` in a scratch directory):
+
+```json
+{
+  "mcpServers": {
+    "godot": {
+      "type": "stdio",
+      "command": "/absolute/path/to/godot-mcp/src/GodotMcp.Server/bin/Release/net10.0/GodotMcp.Server",
+      "args": [
+        "/absolute/path/to/your/godot/project"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Use `--scope user` instead of `--scope project` to make the server available in every project. If you packed the tool (above), use `godot-mcp` as the command instead of the apphost path and keep the project path argument.
+
+### 4. Analysis tool walkthroughs
+
+The examples use the small demo project below. Copy the files into a folder (the scene files are plain text, so no Godot install is needed), then point the server at that folder. `art/missing.png` is intentionally absent so the validation examples have something to report.
+
+<details>
+<summary>Demo project files</summary>
+
+```
+demo/
+├── project.godot
+├── main.tscn
+├── ui/
+│   ├── hud.tscn
+│   └── hud.gd
+└── scripts/
+    ├── player.gd
+    └── unused_helper.gd
+```
+
+`project.godot`
+
+```ini
+config_version=5
+
+[application]
+
+config/name="Demo"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4")
+```
+
+`main.tscn`
+
+```ini
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_ply"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="2_hud"]
+[ext_resource type="Texture2D" path="res://art/missing.png" id="3_tex"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Player" type="CharacterBody2D" parent="." groups=["enemies"]]
+script = ExtResource("1_ply")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture = ExtResource("3_tex")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+
+[node name="Hud" parent="." instance=ExtResource("2_hud")]
+```
+
+`ui/hud.tscn`
+
+```ini
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+
+[node name="Hud" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="StartButton" type="Button" parent="."]
+
+[node name="Button2" type="Button" parent="."]
+
+[node name="Label Score" type="Label" parent="."]
+
+[connection signal="pressed" from="StartButton" to="." method="_on_start_pressed"]
+```
+
+`ui/hud.gd` (deliberately has no `_on_start_pressed`)
+
+```gdscript
+extends CanvasLayer
+
+func _ready() -> void:
+	pass
+```
+
+`scripts/player.gd`
+
+```gdscript
+extends CharacterBody2D
+
+const SPEED := 200.0
+```
+
+`scripts/unused_helper.gd` (nothing references it)
+
+```gdscript
+extends Node
+
+func help() -> void:
+	pass
+```
+
+</details>
+
+Each example shows the arguments object an MCP client sends for the tool call (every tool also accepts an optional `projectPath`, omitted here), followed by the response. Responses are real server output, pretty-printed and trimmed where noted.
+
+#### `godot_find_nodes`
+
+Find every `CollisionShape2D` in the project. Other filters: `namePattern` (`*` and `?` wildcards, e.g. `"Button*"`) and `group`. At least one is required.
+
+```json
+{ "type": "CollisionShape2D" }
+```
+
+```json
+[
+  {
+    "scenePath": "res://main.tscn",
+    "nodePath": "Player/CollisionShape2D",
+    "name": "CollisionShape2D",
+    "type": "CollisionShape2D"
+  }
+]
+```
+
+#### `godot_validate_scene`
+
+Check one scene for missing files, unused or undeclared resources, duplicate paths, dangling connections and missing GDScript handlers.
+
+```json
+{ "scenePath": "res://ui/hud.tscn" }
+```
+
+```json
+{
+  "scenePath": "res://ui/hud.tscn",
+  "valid": true,
+  "errors": 0,
+  "warnings": 1,
+  "issues": [
+    {
+      "severity": "Warning",
+      "code": "missing-handler",
+      "message": "connection 'pressed' targets method '_on_start_pressed' which is not defined in 'res://ui/hud.gd'"
+    }
+  ]
+}
+```
+
+`valid` is `false` only when there are errors; warnings do not fail validation.
+
+#### `godot_validate_project`
+
+Validate every scene and return only the scenes that have issues. Takes no arguments.
+
+```json
+{}
+```
+
+```json
+[
+  {
+    "scenePath": "res://main.tscn",
+    "valid": false,
+    "errors": 1,
+    "warnings": 0,
+    "issues": [
+      {
+        "severity": "Error",
+        "code": "missing-file",
+        "message": "ext_resource '3_tex' points to missing file 'res://art/missing.png'"
+      }
+    ]
+  },
+  {
+    "scenePath": "res://ui/hud.tscn",
+    "valid": true,
+    "errors": 0,
+    "warnings": 1,
+    "issues": [
+      {
+        "severity": "Warning",
+        "code": "missing-handler",
+        "message": "connection 'pressed' targets method '_on_start_pressed' which is not defined in 'res://ui/hud.gd'"
+      }
+    ]
+  }
+]
+```
+
+#### `godot_lint_scene`
+
+Check one scene for style anti-patterns. `maxDepth` (default `10`) sets the nesting depth that gets flagged.
+
+```json
+{ "scenePath": "res://ui/hud.tscn" }
+```
+
+```json
+{
+  "scenePath": "res://ui/hud.tscn",
+  "valid": true,
+  "errors": 0,
+  "warnings": 2,
+  "issues": [
+    {
+      "severity": "Warning",
+      "code": "default-name",
+      "message": "node 'Button2' still has the default editor name for type 'Button'"
+    },
+    {
+      "severity": "Warning",
+      "code": "name-with-spaces",
+      "message": "node 'Label Score' has spaces in its name; NodePath lookups become awkward"
+    }
+  ]
+}
+```
+
+#### `godot_find_orphan_resources`
+
+List scenes, resources and scripts that nothing references. Treat the result as deletion candidates: dynamic `load()` calls built at runtime are invisible to the scan.
+
+```json
+{}
+```
+
+```json
+[
+  "res://scripts/unused_helper.gd"
+]
+```
+
+#### `godot_find_script_usages`
+
+Find every node, in every scene, that has a given script attached.
+
+```json
+{ "scriptPath": "res://scripts/player.gd" }
+```
+
+```json
+[
+  {
+    "scenePath": "res://main.tscn",
+    "nodePath": "Player",
+    "nodeName": "Player"
+  }
+]
+```
+
+#### `godot_scene_diagram`
+
+Render a scene's node tree. `format` is `"mermaid"` (the default; a graph with signal connections as dashed edges) or `"ascii"`. The response is plain text, not JSON. Trimmed trailing blank lines.
+
+```json
+{ "scenePath": "res://main.tscn", "format": "ascii" }
+```
+
+```
+Main (Node2D)
+├── Player (CharacterBody2D) [script] {enemies}
+│   ├── Sprite2D (Sprite2D)
+│   └── CollisionShape2D (CollisionShape2D)
+└── Hud
+```
+
+#### `godot_scene_dependencies`
+
+List the external resources a scene directly references (not transitive dependencies).
+
+```json
+{ "scenePath": "res://main.tscn" }
+```
+
+```json
+[
+  { "id": "1_ply", "type": "Script", "path": "res://scripts/player.gd" },
+  { "id": "2_hud", "type": "PackedScene", "path": "res://ui/hud.tscn" },
+  { "id": "3_tex", "type": "Texture2D", "path": "res://art/missing.png" }
+]
+```
+
 ## Tools
 
 | Tool | Description |
