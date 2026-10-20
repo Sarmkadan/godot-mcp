@@ -32,6 +32,7 @@ builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
 var projectRoot = args.FirstOrDefault() ?? Environment.GetEnvironmentVariable("GODOT_PROJECT") ?? Environment.CurrentDirectory;
 builder.Services.AddSingleton(new ProjectLocator(projectRoot));
 builder.Services.AddHeadlessRunnerOptions(builder.Configuration, projectRoot);
+builder.Services.AddProjectAnalyzerOptions(builder.Configuration);
 builder.Services
     .AddMcpServer(o => o.ServerInfo = new() { Name = "godot-mcp", Version = "0.1.0" })
     .WithStdioServerTransport()
@@ -43,7 +44,7 @@ try
 }
 catch (OptionsValidationException ex)
 {
-    Console.Error.WriteLine("Invalid HeadlessRunner configuration:");
+    Console.Error.WriteLine("Invalid server configuration:");
     foreach (var failure in ex.Failures)
     {
         Console.Error.WriteLine($"  - {failure}");

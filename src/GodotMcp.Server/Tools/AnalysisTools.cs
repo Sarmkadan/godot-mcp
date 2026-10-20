@@ -1,13 +1,17 @@
 using System.ComponentModel;
 using GodotMcp.Core.Project;
 using GodotMcp.Core.Scenes;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 
 namespace GodotMcp.Server.Tools;
 
 [McpServerToolType]
-public sealed class AnalysisTools(ProjectLocator locator)
+public sealed class AnalysisTools(ProjectLocator locator, IOptions<ProjectAnalyzerOptions> analyzerOptions)
 {
+    ProjectAnalyzer CreateAnalyzer(string? projectPath) =>
+        new(locator.Resolve(projectPath), analyzerOptions.Value);
+
     [McpServerTool(Name = "godot_find_nodes"), Description("Find nodes across all scenes in the project by type, wildcard name pattern (* and ?), and/or group. At least one filter is required.")]
     public IReadOnlyList<NodeMatchResult> FindNodes(
         [Description("Exact Godot node type, e.g. Sprite2D, CollisionShape2D")] string? type = null,
@@ -17,7 +21,7 @@ public sealed class AnalysisTools(ProjectLocator locator)
     {
         if (type is null && namePattern is null && group is null)
             throw new ArgumentException("Provide at least one of: type, namePattern, group");
-        var analyzer = new ProjectAnalyzer(locator.Resolve(projectPath));
+        var analyzer = CreateAnalyzer(projectPath);
         return analyzer.FindNodes(type, namePattern, group)
             .Select(m => new NodeMatchResult(m.ScenePath, m.NodePath, m.Name, m.Type))
             .ToList();
@@ -54,11 +58,11 @@ public sealed class AnalysisTools(ProjectLocator locator)
 
     [McpServerTool(Name = "godot_find_orphan_resources"), Description("List scenes, resources and scripts not referenced by any scene, resource, script source (res:// literals) or project.godot. Strong deletion candidates, but verify dynamic loads manually.")]
     public IReadOnlyList<string> FindOrphanResources(string? projectPath = null) =>
-        new ProjectAnalyzer(locator.Resolve(projectPath)).FindOrphanResources();
+        CreateAnalyzer(projectPath).FindOrphanResources();
 
     [McpServerTool(Name = "godot_find_script_usages"), Description("Find every scene node that has the given script attached.")]
     public IReadOnlyList<ScriptUsageResult> FindScriptUsages([Description("Script path as res://, e.g. res://player.gd")] string scriptPath, string? projectPath = null) =>
-        new ProjectAnalyzer(locator.Resolve(projectPath)).FindScriptUsages(scriptPath)
+        CreateAnalyzer(projectPath).FindScriptUsages(scriptPath)
             .Select(u => new ScriptUsageResult(u.ScenePath, u.NodePath, u.NodeName))
             .ToList();
 
@@ -76,7 +80,7 @@ public sealed class AnalysisTools(ProjectLocator locator)
 
     [McpServerTool(Name = "godot_scene_dependencies"), Description("List the external resources (scenes, scripts, textures, ...) a scene directly depends on.")]
     public IReadOnlyList<ExternalResourceResult> SceneDependencies(string scenePath, string? projectPath = null) =>
-        new ProjectAnalyzer(locator.Resolve(projectPath)).GetSceneDependencies(scenePath)
+        CreateAnalyzer(projectPath).GetSceneDependencies(scenePath)
             .Select(r => new ExternalResourceResult(r.Id, r.Type, r.Path, r.Uid))
             .ToList();
 }

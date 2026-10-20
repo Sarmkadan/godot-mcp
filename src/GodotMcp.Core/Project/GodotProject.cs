@@ -74,14 +74,43 @@ public sealed partial class GodotProject
         return _pathResolver.ToResPath(absolutePath);
     }
 
-    public IEnumerable<string> EnumerateFiles(params string[] extensions)
+    public IEnumerable<string> EnumerateFiles(params string[] extensions) =>
+        EnumerateFiles(new ProjectAnalyzerOptions(), extensions);
+
+    /// <summary>
+    /// Enumerates project files as res:// paths, honouring the depth, count, ignored-directory and extension limits in <paramref name="scan"/>.
+    /// Throws <see cref="InvalidOperationException"/> when more than <see cref="ProjectAnalyzerOptions.MaxFileCount"/> files match.
+    /// </summary>
+    public IEnumerable<string> EnumerateFiles(ProjectAnalyzerOptions scan, params string[] extensions)
     {
+        ArgumentNullException.ThrowIfNull(scan);
         var wanted = extensions.Select(e => e.StartsWith('.') ? e : "." + e).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in Directory.EnumerateFiles(RootPath, "*", SearchOption.AllDirectories))
+        var restricted = scan.ExtensionFilters.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var ignored = scan.IgnoredDirectories.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var count = 0;
+        foreach (var file in WalkFiles(RootPath, 0, scan, ignored))
         {
-            var relative = Path.GetRelativePath(RootPath, file);
-            if (relative.StartsWith(".godot") || relative.StartsWith(".git") || relative.Contains($"{Path.DirectorySeparatorChar}.godot{Path.DirectorySeparatorChar}")) continue;
-            if (wanted.Count == 0 || wanted.Contains(Path.GetExtension(file))) yield return ToResPath(file);
+            var extension = Path.GetExtension(file);
+            if (wanted.Count > 0 && !wanted.Contains(extension)) continue;
+            if (restricted.Count > 0 && !restricted.Contains(extension)) continue;
+            if (scan.MaxFileCount > 0 && ++count > scan.MaxFileCount)
+                throw new InvalidOperationException($"Project scan matched more than {scan.MaxFileCount} files; raise ProjectAnalyzer:MaxFileCount or narrow the extension filters.");
+            yield return ToResPath(file);
+        }
+    }
+
+    static IEnumerable<string> WalkFiles(string directory, int depth, ProjectAnalyzerOptions scan, HashSet<string> ignored)
+    {
+        foreach (var file in Directory.EnumerateFiles(directory))
+            yield return file;
+        if (scan.MaxScanDepth > 0 && depth >= scan.MaxScanDepth) yield break;
+        foreach (var subdirectory in Directory.EnumerateDirectories(directory))
+        {
+            if (ignored.Contains(Path.GetFileName(subdirectory))) continue;
+            // Symbolic links are not followed, so a link cannot loop back into the tree.
+            if ((File.GetAttributes(subdirectory) & FileAttributes.ReparsePoint) != 0) continue;
+            foreach (var file in WalkFiles(subdirectory, depth + 1, scan, ignored))
+                yield return file;
         }
     }
 
