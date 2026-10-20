@@ -9,17 +9,23 @@ public static class TscnParser
             throw new GodotParseException("Cannot parse an empty or whitespace-only TSCN document", 0);
 
         var reader = new GodotValueReader(text);
-        reader.SkipWhitespaceAndComments();
+        var pending = ReadComments(reader);
         var descriptor = ParseSectionHeader(reader) ?? throw new GodotParseException("Missing descriptor section", 0);
+        descriptor.LeadingComments.AddRange(pending);
         var document = new TscnDocument(descriptor);
         var current = descriptor;
         while (true)
         {
-            reader.SkipWhitespaceAndComments();
-            if (reader.AtEnd) break;
+            pending = ReadComments(reader);
+            if (reader.AtEnd)
+            {
+                document.TrailingComments.AddRange(pending);
+                break;
+            }
             var next = ParseSectionHeader(reader);
             if (next is not null)
             {
+                next.LeadingComments.AddRange(pending);
                 document.Sections.Add(next);
                 current = next;
                 continue;
@@ -28,8 +34,24 @@ public static class TscnParser
             reader.Expect('=');
             var value = reader.ReadValue();
             current.Properties.Add(new KeyValuePair<string, GodotValue>(key, value));
+            if (pending.Count > 0) current.PropertyComments[key] = pending;
         }
         return document;
+    }
+
+    /// <summary>
+    /// Skips whitespace and collects the comment lines in between, so they can be written back verbatim.
+    /// </summary>
+    static List<string> ReadComments(GodotValueReader reader)
+    {
+        var comments = new List<string>();
+        reader.SkipWhitespace();
+        while (!reader.AtEnd && reader.PeekChar() is ';' or '#')
+        {
+            comments.Add(reader.ReadLine().TrimEnd());
+            reader.SkipWhitespace();
+        }
+        return comments;
     }
 
     public static TscnDocument ParseFile(string path)
