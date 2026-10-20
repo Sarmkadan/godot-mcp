@@ -483,9 +483,124 @@ Boss (CharacterBody2D) [script] {enemies}
 
 or `format=mermaid` for a paste-ready graph where signal connections appear as dashed labeled edges.
 
+## Headless execution
+
+`godot_run_headless`, `godot_import_resources` and `godot_binary_info` launch the real `godot` binary with `--headless`. Nothing else in the server needs it. The same code is available to .NET callers as `HeadlessRunner`.
+
+### How the binary is located
+
+`GodotExecutable.Locate()` tries these in order and returns the first match that is allowlisted:
+
+1. The `GODOT_BIN` environment variable, then `GODOT`. If either points at an existing file, that file is used. If it is set but not allowlisted, the search stops there and does **not** fall back to `PATH`.
+2. A `PATH` search for `godot`, `godot4` or `godot-mono` (Windows: `godot.exe`, `godot4.exe`, `Godot_v4.exe`).
+
+There is no config file. The only setting is the executable allowlist, passed as a server argument and repeatable:
+
+```
+--allowlist-executable=/absolute/path/to/godot
+--allowlist-executable /absolute/path/to/godot      # equivalent
+```
+
+The server fails closed: without an allowlist, `Locate()` returns nothing, so `godot_binary_info` reports `path: null` and the run tools fail, even when `godot` is installed. The allowlisted path must be absolute, must exist at startup (otherwise the server exits with code 1), and must match the path `Locate()` finds character for character. Symlinks are not resolved, so if `which godot` prints `/usr/bin/godot`, allowlist `/usr/bin/godot`, not the file it links to.
+
+Check what the server sees with `godot_binary_info`, or run `which godot` in the same shell that starts the server.
+
+### Example: MCP client config
+
+Allowlist the binary and point `GODOT_BIN` at the same path:
+
+```json
+{
+  "mcpServers": {
+    "godot": {
+      "command": "godot-mcp",
+      "args": [
+        "/absolute/path/to/your/godot/project",
+        "--allowlist-executable=/usr/local/bin/godot"
+      ],
+      "env": {
+        "GODOT_BIN": "/usr/local/bin/godot"
+      }
+    }
+  }
+}
+```
+
+### Example: run a scene and a script
+
+Scene paths are **project-relative** (`main.tscn`, `ui/hud.tscn`). Do not use `res://`: the server resolves paths against the project folder, so `res://main.tscn` is treated as a file that does not exist. Omit `scene` to run the project's main scene.
+
+Run a scene from an MCP client:
+
+```json
+{ "scene": "ui/hud.tscn", "timeoutSeconds": 30 }
+```
+
+Run the main scene with the default timeout:
+
+```json
+{}
+```
+
+Both calls return `ExitCode`, `Succeeded`, `TimedOut`, `DurationSeconds`, `Stdout` and `Stderr`.
+
+No MCP tool runs a script yet. From .NET, `HeadlessRunner.RunScriptAsync` runs a `--script` file. Create `scripts/headless_check.gd` in your project:
+
+```gdscript
+extends SceneTree
+
+func _init() -> void:
+	print("headless check: ", ProjectSettings.get_setting("application/config/name"))
+	quit(0)
+```
+
+Then call it from a console app that references the `GodotMcp.Core` project:
+
+```csharp
+using GodotMcp.Core.Editor;
+using GodotMcp.Core.Project;
+
+var godotPath = "/usr/local/bin/godot";
+ExecutableAllowlist.Initialize([godotPath]);
+
+var project = GodotProject.Open("/absolute/path/to/your/godot/project");
+var runner = new HeadlessRunner(project, new GodotExecutable(godotPath))
+{
+    DefaultTimeout = TimeSpan.FromSeconds(30)
+};
+
+var script = await runner.RunScriptAsync("scripts/headless_check.gd", Console.WriteLine);
+Console.WriteLine($"script: exit={script.ExitCode} timedOut={script.TimedOut}");
+
+var scene = await runner.RunProjectAsync("main.tscn");
+Console.WriteLine($"scene: exit={scene.ExitCode} succeeded={scene.Succeeded}");
+```
+
+`RunScriptAsync` and `RunProjectAsync` also take a cancellation token. Cancelling throws `OperationCanceledException` instead of returning a result.
+
+### Timeouts
+
+| Entry point | How to set the timeout | Default |
+| --- | --- | --- |
+| `godot_run_headless` | `timeoutSeconds` argument | 60 s, clamped to 1-600 |
+| `godot_import_resources` | not configurable | 120 s |
+| `HeadlessRunner` (.NET) | `DefaultTimeout` property | 2 min |
+
+When a run times out, the server kills the whole process tree. The result has `TimedOut: true` and `ExitCode: -1`, and `Stdout`/`Stderr` contain the output captured before the kill. The `ExecutableConfig.DefaultTimeoutSeconds` value is not read by anything, so it does not change the timeout.
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `godot_run_headless` fails with `godot binary not found; set GODOT_BIN or add godot to PATH`. `godot_binary_info` returns `path: null`. | No `godot` on `PATH` and `GODOT_BIN` unset, **or** the binary is found but not allowlisted. The second case is silent, so the message is misleading. | Run `which godot`. Set `GODOT_BIN` to that path and pass `--allowlist-executable=<same path>`. Check the server's stderr for `WARNING: No executable allowlist configured`. |
+| Non-zero exit: `Succeeded: false`, `ExitCode` is not 0. No exception is thrown. | The script or scene failed, or it called `quit(n)` with `n != 0`. | Read `Stderr`, where Godot prints parse and runtime errors. Reproduce by hand: `"$GODOT_BIN" --headless --path /absolute/path/to/your/godot/project --script res://scripts/headless_check.gd`. The MCP wrapper takes project-relative paths, but the Godot CLI expects `res://`. |
+| Timeout: `TimedOut: true`, `ExitCode: -1`. | The run went past the timeout, usually a loop that never calls `quit()`, or a scene that waits for input. | Make scripts call `quit()` when they finish. Raise `timeoutSeconds` (max 600). Check the partial `Stdout` to see how far it got. |
+| `Scene file not found` (`FileNotFoundException`), or `Scene path must be project-relative` (`ArgumentException`). | The path is `res://...`, starts with `/`, contains `..`, or does not exist in the project. | Use a project-relative path such as `main.tscn`, or omit `scene` to run the main scene. |
+| The server exits with code 1 at startup: `Allowlisted executable not found`. | The `--allowlist-executable` path does not exist. | Fix the path. It must be an existing absolute path. |
+
 ## How it works
 
-`project.godot`, `.tscn` and `.tres` are parsed and written as plain text - no engine embedding, no editor plugin, no running Godot instance. The server shells out to the `godot` binary only for the three optional run tools; set `GODOT_BIN` if it is not on `PATH`.
+`project.godot`, `.tscn` and `.tres` are parsed and written as plain text - no engine embedding, no editor plugin, no running Godot instance. The server shells out to the `godot` binary only for the three optional run tools; see [Headless execution](#headless-execution) for how it is located and allowlisted.
 
 ## Requirements
 
