@@ -9,15 +9,18 @@ public sealed record NodeMatch(string ScenePath, string NodePath, string Name, s
 
 public sealed record ScriptUsage(string ScenePath, string NodePath, string NodeName);
 
-public sealed partial class ProjectAnalyzer(GodotProject project)
+public sealed partial class ProjectAnalyzer(GodotProject project, ProjectAnalyzerOptions? options = null)
 {
     public GodotProject Project { get; } = project ?? throw new ArgumentNullException(nameof(project));
+
+    /// <summary>Scan limits and extension filters applied to every file enumeration this analyzer performs.</summary>
+    public ProjectAnalyzerOptions Options { get; } = options ?? new ProjectAnalyzerOptions();
 
     /// <summary>Find nodes across every scene in the project, by exact type name or wildcard name pattern.</summary>
     public IReadOnlyList<NodeMatch> FindNodes(string? type = null, string? namePattern = null, string? group = null)
     {
         var matches = new List<NodeMatch>();
-        foreach (var scenePath in Project.FindScenes())
+        foreach (var scenePath in ScanScenes())
         {
             SceneTree tree;
             try { tree = Project.LoadScene(scenePath); }
@@ -38,7 +41,7 @@ public sealed partial class ProjectAnalyzer(GodotProject project)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(scriptResPath);
         var usages = new List<ScriptUsage>();
-        foreach (var scenePath in Project.FindScenes())
+        foreach (var scenePath in ScanScenes())
         {
             SceneTree tree;
             try { tree = Project.LoadScene(scenePath); }
@@ -73,7 +76,7 @@ public sealed partial class ProjectAnalyzer(GodotProject project)
             foreach (var (_, value) in section.Properties)
                 foreach (var path in ExtractResPaths(value.ToTscnString())) referenced.Add(path);
         }
-        foreach (var textResource in Project.FindScenes().Concat(Project.FindResources().Where(IsTextResource)))
+        foreach (var textResource in ScanScenes().Concat(ScanResources().Where(IsTextResource)))
         {
             TscnDocument document;
             try { document = Project.LoadDocument(textResource); }
@@ -83,15 +86,15 @@ public sealed partial class ProjectAnalyzer(GodotProject project)
                 if (ext.GetAttributeString("path") is { } path) referenced.Add(Normalize(path));
             }
         }
-        foreach (var script in Project.FindScripts())
+        foreach (var script in ScanScripts())
         {
             var absolute = Project.ResolveResPath(script);
             if (!File.Exists(absolute)) continue;
             foreach (var path in ExtractResPaths(File.ReadAllText(absolute))) referenced.Add(path);
         }
-        var candidates = Project.FindScenes()
-            .Concat(Project.FindResources())
-            .Concat(Project.FindScripts());
+        var candidates = ScanScenes()
+            .Concat(ScanResources())
+            .Concat(ScanScripts());
         return candidates
             .Where(c => !referenced.Contains(Normalize(c)))
             .Where(c => Normalize(c) != Normalize(info.MainScene ?? ""))
@@ -112,6 +115,12 @@ public sealed partial class ProjectAnalyzer(GodotProject project)
         yield return document.Descriptor;
         foreach (var section in document.Sections) yield return section;
     }
+
+    IEnumerable<string> ScanScenes() => Project.EnumerateFiles(Options, ".tscn");
+
+    IEnumerable<string> ScanResources() => Project.EnumerateFiles(Options, ".tres", ".res", ".gdshader", ".material");
+
+    IEnumerable<string> ScanScripts() => Project.EnumerateFiles(Options, ".cs", ".gd");
 
     static IEnumerable<string> ExtractResPaths(string text)
     {
