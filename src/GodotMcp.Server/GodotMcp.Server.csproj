@@ -13,11 +13,21 @@
     <Authors>Vladyslav Zaiets</Authors>
     <Company>Vladyslav Zaiets</Company>
     <Description>MCP server for Godot 4 projects: scene tree inspection, node and property editing, resource and script tools - works on project files directly, no Godot install required.</Description>
-    <PackageTags>godot;mcp;gamedev;dotnet;csharp</PackageTags>
+    <PackageTags>godot;mcp;model-context-protocol</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Sarmkadan/godot-mcp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Sarmkadan/godot-mcp</PackageProjectUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Public DTOs/tools are self-describing (record parameters, [Description]); don't fail the pack on missing XML comments. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
