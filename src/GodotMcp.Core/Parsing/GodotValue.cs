@@ -106,6 +106,13 @@ public sealed record GodotNodePath(string Value) : GodotValue
     public override void Write(StringBuilder sb) => sb.Append("^\"").Append(Escape(Value)).Append('"');
 }
 
+/// <summary>A quoted string with an unrecognised prefix (e.g. <c>@"..."</c>), kept so it round-trips.</summary>
+public sealed record GodotVerbatimString(string Prefix, string Value) : GodotValue
+{
+    public override GodotValueKind Kind => GodotValueKind.Raw;
+    public override void Write(StringBuilder sb) => sb.Append(Prefix).Append('"').Append(Escape(Value)).Append('"');
+}
+
 public sealed record GodotIdentifier(string Name) : GodotValue
 {
     public override GodotValueKind Kind => GodotValueKind.Identifier;
@@ -138,14 +145,13 @@ public sealed record GodotDictionary(IReadOnlyList<KeyValuePair<GodotValue, Godo
             sb.Append("{}");
             return;
         }
-        sb.Append("{\n");
+        sb.Append('{');
         for (var i = 0; i < Entries.Count; i++)
         {
+            if (i > 0) sb.Append(", ");
             Entries[i].Key.Write(sb);
             sb.Append(": ");
             Entries[i].Value.Write(sb);
-            if (i < Entries.Count - 1) sb.Append(',');
-            sb.Append('\n');
         }
         sb.Append('}');
     }

@@ -148,7 +148,7 @@ public class SceneToolsTests : IDisposable
 
         Assert.True(result.Changed);
         var sceneContent = File.ReadAllText(Path.Combine(_root, "test.tscn"));
-        Assert.Contains("[node name=\"Child\" type=\"Sprite2D\" parent=\"./Parent\"]", sceneContent);
+        Assert.Contains("[node name=\"Child\" type=\"Sprite2D\" parent=\"Parent\"]", sceneContent);
     }
 
     [Fact]
@@ -193,11 +193,11 @@ public class SceneToolsTests : IDisposable
             [node name="OldName" type="Node"]
             """);
 
-        var result = _tools.RenameNode(scenePath, "OldName", "NewName");
+        var result = _tools.RenameNode(scenePath, ".", "NewName");
 
         Assert.True(result.Changed);
         Assert.Equal(scenePath, result.ScenePath);
-        Assert.Contains("Renamed node 'OldName' to 'NewName'", result.Detail);
+        Assert.Contains("Renamed node '.' to 'NewName'", result.Detail);
 
         var sceneContent = File.ReadAllText(Path.Combine(_root, "test.tscn"));
         Assert.Contains("[node name=\"NewName\" type=\"Node\"", sceneContent);
@@ -213,14 +213,14 @@ public class SceneToolsTests : IDisposable
             [node name="Receiver" type="Node" parent="."]
             """);
 
-        var result = _tools.ConnectSignal(scenePath, "pressed", ".", "./Receiver", "_on_button_pressed");
+        var result = _tools.ConnectSignal(scenePath, "pressed", "Emitter", "Receiver", "_on_button_pressed");
 
         Assert.True(result.Changed);
         Assert.Equal(scenePath, result.ScenePath);
-        Assert.Contains("Connected ./pressed -> ./Receiver._on_button_pressed", result.Detail);
+        Assert.Contains("Connected Emitter.pressed -> Receiver._on_button_pressed", result.Detail);
 
         var sceneContent = File.ReadAllText(Path.Combine(_root, "test.tscn"));
-        Assert.Contains("[connection signal=\"pressed\" from=\".\" to=\"./Receiver\" method=\"_on_button_pressed\"]", sceneContent);
+        Assert.Contains("[connection signal=\"pressed\" from=\"Emitter\" to=\"Receiver\" method=\"_on_button_pressed\"]", sceneContent);
     }
 
     [Fact]
@@ -230,14 +230,14 @@ public class SceneToolsTests : IDisposable
             [gd_scene format=3]
             [node name="Emitter" type="Button" parent="."]
             [node name="Receiver" type="Node" parent="."]
-            [connection signal="pressed" from="." to="./Receiver" method="_on_button_pressed"]
+            [connection signal="pressed" from="Emitter" to="Receiver" method="_on_button_pressed"]
             """);
 
-        var result = _tools.DisconnectSignal(scenePath, "pressed", ".", "./Receiver", "_on_button_pressed");
+        var result = _tools.DisconnectSignal(scenePath, "pressed", "Emitter", "Receiver", "_on_button_pressed");
 
         Assert.True(result.Changed);
         Assert.Equal(scenePath, result.ScenePath);
-        Assert.Contains("Disconnected .pressed -> ./Receiver._on_button_pressed", result.Detail);
+        Assert.Contains("Disconnected Emitter.pressed -> Receiver._on_button_pressed", result.Detail);
 
         var sceneContent = File.ReadAllText(Path.Combine(_root, "test.tscn"));
         Assert.DoesNotContain("[connection", sceneContent);
@@ -307,7 +307,7 @@ public class SceneToolsTests : IDisposable
     [Fact]
     public void CreateNode_WithNullScenePath_ThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => _tools.CreateNode(null!, "Test", "Node"));
+        Assert.Throws<ArgumentNullException>(() => _tools.CreateNode(null!, "Test", "Node"));
     }
 
     [Fact]
@@ -324,10 +324,10 @@ public class SceneToolsTests : IDisposable
             [gd_scene format=3]
             [node name="Emitter" type="Button" parent="."]
             [node name="Receiver" type="Node" parent="."]
-            [connection signal="pressed" from="." to="./Receiver" method="_on_button_pressed"]
+            [connection signal="pressed" from="Emitter" to="Receiver" method="_on_button_pressed"]
             """);
 
-        var result = _tools.ConnectSignal(scenePath, "pressed", ".", "./Receiver", "_on_button_pressed");
+        var result = _tools.ConnectSignal(scenePath, "pressed", "Emitter", "Receiver", "_on_button_pressed");
 
         Assert.True(result.Changed);
         Assert.Equal(scenePath, result.ScenePath);

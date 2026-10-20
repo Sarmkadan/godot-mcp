@@ -21,6 +21,21 @@ public sealed class GodotValueReader
     public bool AtEnd => Position >= _text.Length;
     char Current => _text[Position];
 
+    public void SkipWhitespace()
+    {
+        while (!AtEnd && char.IsWhiteSpace(Current)) Position++;
+    }
+
+    /// <summary>Reads the rest of the current line, without its line terminator.</summary>
+    public string ReadLine()
+    {
+        var start = Position;
+        while (!AtEnd && Current != '\n') Position++;
+        var line = _text[start..Position];
+        if (!AtEnd) Position++;
+        return line;
+    }
+
     public void SkipWhitespaceAndComments()
     {
         while (!AtEnd)
@@ -63,6 +78,7 @@ public sealed class GodotValueReader
             '"' => new GodotString(ReadQuotedString()),
             '&' => ReadPrefixedString(v => new GodotStringName(v)),
             '^' => ReadPrefixedString(v => new GodotNodePath(v)),
+            '@' when Position + 1 < _text.Length && _text[Position + 1] == '"' =>ReadPrefixedString(v => new GodotVerbatimString("@", v)),
             '[' => ReadArray(),
             '{' => ReadDictionary(),
             '-' or '+' => ReadNumber(),

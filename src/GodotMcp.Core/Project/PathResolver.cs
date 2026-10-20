@@ -28,7 +28,9 @@ public sealed class PathResolver
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
 
         _rootPath = Path.GetFullPath(rootPath);
-        _rootPathNormalized = NormalizePath(_rootPath);
+        _rootPathNormalized = _rootPath.Length > 1
+            ? _rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            : _rootPath;
     }
 
     /// <summary>
@@ -46,18 +48,21 @@ public sealed class PathResolver
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        // Handle res:// prefix
-        var relativePath = path.StartsWith("res://", StringComparison.Ordinal)
-            ? path[6..]  // Remove "res://" prefix
-            : path.TrimStart('/', '\\');
-
-        // Normalize path separators and remove redundant separators
-        relativePath = NormalizePath(relativePath);
-
-        // Convert to absolute path relative to root
-        // Use Path.Combine which handles relative paths correctly
-        var combinedPath = Path.Combine(_rootPath, relativePath);
-        var absolutePath = Path.GetFullPath(combinedPath);
+        string absolutePath;
+        if (path.StartsWith("res://", StringComparison.Ordinal))
+        {
+            var relativePath = NormalizePath(path[6..]);
+            absolutePath = Path.GetFullPath(Path.Combine(_rootPath, relativePath));
+        }
+        else if (Path.IsPathRooted(path))
+        {
+            // A rooted filesystem path is only acceptable when it already points inside the project
+            absolutePath = Path.GetFullPath(path);
+        }
+        else
+        {
+            absolutePath = Path.GetFullPath(Path.Combine(_rootPath, NormalizePath(path)));
+        }
 
         // Ensure the resolved path is within the project root
         if (!IsPathWithinRoot(absolutePath))
@@ -100,7 +105,12 @@ public sealed class PathResolver
     /// <param name="path">Path to validate</param>
     /// <returns>True if path is safe, false otherwise</returns>
     /// <exception cref="ArgumentNullException">Thrown if path is null</exception>
-    public bool IsPathSafe(string path)
+    public bool IsPathSafe(string path) => IsTraversalFree(path);
+
+    /// <summary>
+    /// Static form of <see cref="IsPathSafe"/> for callers that have no project root.
+    /// </summary>
+    public static bool IsTraversalFree(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
 
@@ -109,6 +119,8 @@ public sealed class PathResolver
 
         // Check for obvious traversal attempts
         var normalized = path.Replace('\\', '/');
+        if (!normalized.StartsWith("res://", StringComparison.Ordinal) && Path.IsPathRooted(path))
+            return false;
         if (normalized.Contains("/../") ||
             normalized.StartsWith("../", StringComparison.Ordinal) ||
             normalized.StartsWith("..\\", StringComparison.Ordinal))

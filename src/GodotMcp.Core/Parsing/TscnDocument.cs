@@ -8,6 +8,12 @@ public sealed class TscnSection(string name)
     public List<KeyValuePair<string, GodotValue>> Attributes { get; } = [];
     public List<KeyValuePair<string, GodotValue>> Properties { get; } = [];
 
+    /// <summary>Comment lines (including the leading ';' or '#') that precede this section header.</summary>
+    public List<string> LeadingComments { get; } = [];
+
+    /// <summary>Comment lines that precede a property, keyed by property name.</summary>
+    public Dictionary<string, List<string>> PropertyComments { get; } = [];
+
     public GodotValue? GetAttribute(string key) => Attributes.FirstOrDefault(a => a.Key == key).Value;
     public string? GetAttributeString(string key) => GetAttribute(key) is GodotString s ? s.Value : null;
     public long? GetAttributeInt(string key) => GetAttribute(key) is GodotInt i ? i.Value : null;
@@ -34,11 +40,13 @@ public sealed class TscnSection(string name)
         var index = Properties.FindIndex(p => p.Key == key);
         if (index < 0) return false;
         Properties.RemoveAt(index);
+        PropertyComments.Remove(key);
         return true;
     }
 
     public void WriteTo(StringBuilder sb)
     {
+        WriteLines(sb, LeadingComments);
         sb.Append('[').Append(Name);
         foreach (var (key, value) in Attributes)
         {
@@ -48,10 +56,16 @@ public sealed class TscnSection(string name)
         sb.Append("]\n");
         foreach (var (key, value) in Properties)
         {
+            if (PropertyComments.TryGetValue(key, out var comments)) WriteLines(sb, comments);
             sb.Append(key).Append(" = ");
             value.Write(sb);
             sb.Append('\n');
         }
+    }
+
+    static void WriteLines(StringBuilder sb, IEnumerable<string> lines)
+    {
+        foreach (var line in lines) sb.Append(line).Append('\n');
     }
 }
 
@@ -59,6 +73,9 @@ public sealed class TscnDocument(TscnSection descriptor)
 {
     public TscnSection Descriptor { get; } = descriptor;
     public List<TscnSection> Sections { get; } = [];
+
+    /// <summary>Comment lines after the last section.</summary>
+    public List<string> TrailingComments { get; } = [];
 
     public bool IsScene => Descriptor.Name == "gd_scene";
     public bool IsResource => Descriptor.Name == "gd_resource";
@@ -82,6 +99,11 @@ public sealed class TscnDocument(TscnSection descriptor)
         {
             sb.Append('\n');
             section.WriteTo(sb);
+        }
+        if (TrailingComments.Count > 0)
+        {
+            sb.Append('\n');
+            foreach (var line in TrailingComments) sb.Append(line).Append('\n');
         }
         return sb.ToString();
     }

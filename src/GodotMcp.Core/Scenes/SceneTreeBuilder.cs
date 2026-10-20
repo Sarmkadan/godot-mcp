@@ -16,15 +16,11 @@ public static class SceneTreeBuilder
     /// <exception cref="ArgumentNullException">Thrown if document or scenePath is null</exception>
     public static SceneTree Build(TscnDocument document, string scenePath)
     {
-        // Create a PathResolver to validate external resource paths
-        // Note: scenePath is trusted as it comes from the project's own file structure
-        var pathResolver = new PathResolver(Path.GetDirectoryName(Path.GetFullPath(scenePath)) ?? ".");
-
         var externals = document.ExtResources
             .Select(s => new ResourceRef(
                 s.GetAttributeString("id") ?? "",
                 s.GetAttributeString("type") ?? "",
-                ValidateExternalResourcePath(s.GetAttributeString("path") ?? "", pathResolver),
+                ValidateExternalResourcePath(s.GetAttributeString("path") ?? ""),
                 s.GetAttributeString("uid")))
             .ToList();
         var subs = document.SubResources
@@ -110,26 +106,24 @@ public static class SceneTreeBuilder
     /// Validates and normalizes an external resource path to prevent directory traversal attacks.
     /// </summary>
     /// <param name="path">The resource path from the document</param>
-    /// <param name="pathResolver">Path resolver for the project</param>
-    /// <returns>Normalized and validated path</returns>
+    /// <returns>The validated path, unchanged, so it keeps its res:// form</returns>
     /// <exception cref="ArgumentException">Thrown if path is invalid or attempts to escape project</exception>
-    private static string ValidateExternalResourcePath(string path, PathResolver pathResolver)
+    private static string ValidateExternalResourcePath(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             throw new ArgumentException("External resource path cannot be null or empty", nameof(path));
         }
 
-        // Validate the path is safe before resolving
-        if (!pathResolver.IsPathSafe(path))
+        // The builder has no project root, so only the traversal check applies here.
+        // Full containment is enforced when the path is resolved against the project.
+        if (!PathResolver.IsTraversalFree(path))
         {
             throw new ArgumentException(
                 $"External resource path '{path}' contains invalid path traversal sequences",
                 nameof(path));
         }
 
-        // Resolve the path to ensure it stays within project bounds
-        // This will throw ArgumentException if path attempts to escape
-        return pathResolver.Resolve(path);
+        return path;
     }
 }

@@ -405,7 +405,7 @@ public sealed class SceneEditor
         if (existing is not null) return existing.GetAttributeString("id") ?? "";
         var index = Document.ExtResources.Count() + 1;
         // Extract filename safely from the resolved path to avoid directory traversal in the ID
-        var fileName = Path.GetFileName(resolvedPath).ToLowerInvariant();
+        var fileName = Path.GetFileNameWithoutExtension(resolvedPath).ToLowerInvariant();
         var id = $"{index}_{fileName}";
         var section = new TscnSection("ext_resource");
         section.SetAttribute("type", new GodotString(type));
