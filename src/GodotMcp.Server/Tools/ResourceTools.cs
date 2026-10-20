@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using GodotMcp.Core.Parsing;
 using GodotMcp.Core.Project;
-using GodotMcp.Server.Contracts;
+using GodotMcp.Server;
 using ModelContextProtocol.Server;
 
 namespace GodotMcp.Server.Tools;
@@ -44,7 +44,7 @@ public sealed class ResourceTools(ProjectLocator locator)
 
         var touchedFiles = new List<string>();
 
-        await foreach (var file in Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories))
+        foreach (var file in Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories))
         {
             if (!file.EndsWith(".tscn", StringComparison.OrdinalIgnoreCase) &&
                 !file.EndsWith(".tres", StringComparison.OrdinalIgnoreCase) &&
