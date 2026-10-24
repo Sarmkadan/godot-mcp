@@ -1,0 +1,60 @@
+# EditorConfig: https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# Namespaces
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# Using directives
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+
+# var
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Braces
+csharp_prefer_braces = true:warning
+
+# this. qualification (off)
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# Expression-bodied members
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+
+# Naming: types and members are PascalCase
+dotnet_naming_symbols.types_and_members.applicable_kinds = class, struct, interface, enum, delegate, property, method, event
+dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+dotnet_naming_rule.types_and_members_pascal_case.symbols = types_and_members
+dotnet_naming_rule.types_and_members_pascal_case.style = pascal_case
+dotnet_naming_rule.types_and_members_pascal_case.severity = suggestion
+
+# Naming: private fields are _camelCase
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel_case.style = underscore_camel_case
+dotnet_naming_rule.private_fields_underscore_camel_case.severity = suggestion
+
+[*.{json,yml,yaml,csproj,props,targets}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
