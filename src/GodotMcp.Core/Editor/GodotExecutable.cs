@@ -170,13 +170,21 @@ public sealed record GodotExecutable
 
         process.OutputDataReceived += (_, e) =>
         {
-            if (e.Data is null) return;
+            if (e.Data is null)
+            {
+                return;
+            }
+
             stdout.Add(e.Data);
             onOutputLine?.Invoke(e.Data);
         };
         process.ErrorDataReceived += (_, e) =>
         {
-            if (e.Data is null) return;
+            if (e.Data is null)
+            {
+                return;
+            }
+
             stderr.Add(e.Data);
             onOutputLine?.Invoke(e.Data);
         };

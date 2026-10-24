@@ -95,7 +95,8 @@ public sealed class PathResolverTests : IDisposable
         string? nullPath = null;
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _resolver.Resolve(nullPath));
+        // Null is passed on purpose to exercise the guard; the "!" silences CS8604 for this call only.
+        Assert.Throws<ArgumentNullException>(() => _resolver.Resolve(nullPath!));
     }
 
     [Fact]

@@ -23,16 +23,27 @@ public sealed class GodotValueReader
 
     public void SkipWhitespace()
     {
-        while (!AtEnd && char.IsWhiteSpace(Current)) Position++;
+        while (!AtEnd && char.IsWhiteSpace(Current))
+        {
+            Position++;
+        }
     }
 
     /// <summary>Reads the rest of the current line, without its line terminator.</summary>
     public string ReadLine()
     {
         var start = Position;
-        while (!AtEnd && Current != '\n') Position++;
+        while (!AtEnd && Current != '\n')
+        {
+            Position++;
+        }
+
         var line = _text[start..Position];
-        if (!AtEnd) Position++;
+        if (!AtEnd)
+        {
+            Position++;
+        }
+
         return line;
     }
 
@@ -41,37 +52,60 @@ public sealed class GodotValueReader
         while (!AtEnd)
         {
             var c = Current;
-            if (char.IsWhiteSpace(c)) Position++;
+            if (char.IsWhiteSpace(c))
+            {
+                Position++;
+            }
             else if (c is ';' or '#')
             {
-                while (!AtEnd && Current != '\n') Position++;
+                while (!AtEnd && Current != '\n')
+                {
+                    Position++;
+                }
             }
-            else break;
+            else
+            {
+                break;
+            }
         }
     }
 
     public void SkipInlineWhitespace()
     {
-        while (!AtEnd && (Current == ' ' || Current == '\t')) Position++;
+        while (!AtEnd && (Current == ' ' || Current == '\t'))
+        {
+            Position++;
+        }
     }
 
     public bool TryConsume(char c)
     {
         SkipWhitespaceAndComments();
-        if (AtEnd || Current != c) return false;
+        if (AtEnd || Current != c)
+        {
+            return false;
+        }
+
         Position++;
         return true;
     }
 
     public void Expect(char c)
     {
-        if (!TryConsume(c)) throw new GodotParseException($"Expected '{c}'", Position);
+        if (!TryConsume(c))
+        {
+            throw new GodotParseException($"Expected '{c}'", Position);
+        }
     }
 
     public GodotValue ReadValue()
     {
         SkipWhitespaceAndComments();
-        if (AtEnd) throw new GodotParseException("Unexpected end of input", Position);
+        if (AtEnd)
+        {
+            throw new GodotParseException("Unexpected end of input", Position);
+        }
+
         var c = Current;
         return c switch
         {
@@ -91,7 +125,11 @@ public sealed class GodotValueReader
     GodotValue ReadPrefixedString(Func<string, GodotValue> factory)
     {
         Position++;
-        if (AtEnd || Current != '"') throw new GodotParseException("Expected '\"'", Position);
+        if (AtEnd || Current != '"')
+        {
+            throw new GodotParseException("Expected '\"'", Position);
+        }
+
         return factory(ReadQuotedString());
     }
 
@@ -101,13 +139,25 @@ public sealed class GodotValueReader
         var sb = new StringBuilder();
         while (true)
         {
-            if (AtEnd) throw new GodotParseException("Unterminated string", Position);
+            if (AtEnd)
+            {
+                throw new GodotParseException("Unterminated string", Position);
+            }
+
             var c = Current;
             Position++;
-            if (c == '"') break;
+            if (c == '"')
+            {
+                break;
+            }
+
             if (c == '\\')
             {
-                if (AtEnd) throw new GodotParseException("Unterminated escape", Position);
+                if (AtEnd)
+                {
+                    throw new GodotParseException("Unterminated escape", Position);
+                }
+
                 var e = Current;
                 Position++;
                 sb.Append(e switch
@@ -122,14 +172,21 @@ public sealed class GodotValueReader
                     _ => e
                 });
             }
-            else sb.Append(c);
+            else
+            {
+                sb.Append(c);
+            }
         }
         return sb.ToString();
     }
 
     char ReadUnicodeEscape(int digits)
     {
-        if (Position + digits > _text.Length) throw new GodotParseException("Truncated unicode escape", Position);
+        if (Position + digits > _text.Length)
+        {
+            throw new GodotParseException("Truncated unicode escape", Position);
+        }
+
         var hex = _text.Substring(Position, digits);
         Position += digits;
         return (char)int.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
@@ -138,7 +195,11 @@ public sealed class GodotValueReader
     GodotValue ReadNumber()
     {
         var start = Position;
-        if (Current is '-' or '+') Position++;
+        if (Current is '-' or '+')
+        {
+            Position++;
+        }
+
         if (!AtEnd && (char.IsLetter(Current)))
         {
             var word = ReadIdentifier();
@@ -155,19 +216,36 @@ public sealed class GodotValueReader
         while (!AtEnd)
         {
             var c = Current;
-            if (char.IsDigit(c)) Position++;
+            if (char.IsDigit(c))
+            {
+                Position++;
+            }
             else if (c == '.') { isFloat = true; Position++; }
             else if (c is 'e' or 'E')
             {
                 isFloat = true;
                 Position++;
-                if (!AtEnd && (Current is '-' or '+')) Position++;
+                if (!AtEnd && (Current is '-' or '+'))
+                {
+                    Position++;
+                }
             }
-            else break;
+            else
+            {
+                break;
+            }
         }
         var span = _text.AsSpan(start, Position - start);
-        if (!isFloat && long.TryParse(span, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)) return new GodotInt(l);
-        if (double.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) return new GodotFloat(d);
+        if (!isFloat && long.TryParse(span, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
+        {
+            return new GodotInt(l);
+        }
+
+        if (double.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+        {
+            return new GodotFloat(d);
+        }
+
         throw new GodotParseException($"Invalid number '{span}'", start);
     }
 
@@ -176,16 +254,32 @@ public sealed class GodotValueReader
     public string ReadPropertyPath()
     {
         var start = Position;
-        while (!AtEnd && (char.IsLetterOrDigit(Current) || Current is '_' or '/' or '.' or ':' or '-' or '%' or '@')) Position++;
-        if (Position == start) throw new GodotParseException("Expected property name", Position);
+        while (!AtEnd && (char.IsLetterOrDigit(Current) || Current is '_' or '/' or '.' or ':' or '-' or '%' or '@'))
+        {
+            Position++;
+        }
+
+        if (Position == start)
+        {
+            throw new GodotParseException("Expected property name", Position);
+        }
+
         return _text[start..Position];
     }
 
     public string ReadIdentifier()
     {
         var start = Position;
-        while (!AtEnd && (char.IsLetterOrDigit(Current) || Current is '_' or '@' or '/')) Position++;
-        if (Position == start) throw new GodotParseException("Expected identifier", Position);
+        while (!AtEnd && (char.IsLetterOrDigit(Current) || Current is '_' or '@' or '/'))
+        {
+            Position++;
+        }
+
+        if (Position == start)
+        {
+            throw new GodotParseException("Expected identifier", Position);
+        }
+
         return _text[start..Position];
     }
 
@@ -213,7 +307,11 @@ public sealed class GodotValueReader
                 while (true)
                 {
                     args.Add(ReadValue());
-                    if (TryConsume(')')) break;
+                    if (TryConsume(')'))
+                    {
+                        break;
+                    }
+
                     Expect(',');
                 }
             }
@@ -227,13 +325,24 @@ public sealed class GodotValueReader
     {
         Expect('[');
         var items = new List<GodotValue>();
-        if (TryConsume(']')) return new GodotArray(items);
+        if (TryConsume(']'))
+        {
+            return new GodotArray(items);
+        }
+
         while (true)
         {
             items.Add(ReadValue());
-            if (TryConsume(']')) break;
+            if (TryConsume(']'))
+            {
+                break;
+            }
+
             Expect(',');
-            if (TryConsume(']')) break;
+            if (TryConsume(']'))
+            {
+                break;
+            }
         }
         return new GodotArray(items);
     }
@@ -242,16 +351,27 @@ public sealed class GodotValueReader
     {
         Expect('{');
         var entries = new List<KeyValuePair<GodotValue, GodotValue>>();
-        if (TryConsume('}')) return new GodotDictionary(entries);
+        if (TryConsume('}'))
+        {
+            return new GodotDictionary(entries);
+        }
+
         while (true)
         {
             var key = ReadValue();
             Expect(':');
             var value = ReadValue();
             entries.Add(new KeyValuePair<GodotValue, GodotValue>(key, value));
-            if (TryConsume('}')) break;
+            if (TryConsume('}'))
+            {
+                break;
+            }
+
             Expect(',');
-            if (TryConsume('}')) break;
+            if (TryConsume('}'))
+            {
+                break;
+            }
         }
         return new GodotDictionary(entries);
     }
@@ -264,7 +384,10 @@ public sealed class GodotValueReader
         {
             var c = Current;
             if (char.IsWhiteSpace(c) || c == '\n' || c == '\r' || c == ';')
+            {
                 break;
+            }
+
             Position++;
         }
         var rawText = _text.Substring(start, Position - start).Trim();

@@ -24,10 +24,16 @@ public sealed class SceneEditor
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentNullException.ThrowIfNull(parentPath);
         if (SceneTreeBuilder.FindNodeSection(Document, parentPath) is null && parentPath != ".")
+        {
             throw new InvalidOperationException($"Parent node '{parentPath}' not found in {ScenePath}");
+        }
+
         var nodePath = parentPath == "." ? name : $"{parentPath}/{name}";
         if (SceneTreeBuilder.FindNodeSection(Document, nodePath) is not null)
+        {
             throw new InvalidOperationException($"Node {nodePath} already exists in {ScenePath}");
+        }
+
         var section = new TscnSection("node");
         section.SetAttribute("name", new GodotString(name));
         section.SetAttribute("type", new GodotString(type));
@@ -35,7 +41,11 @@ public sealed class SceneEditor
         var subtreePrefix = parentPath + "/";
         var insertAfter = Document.Sections.FindLastIndex(s =>
         {
-            if (s.Name != "node") return false;
+            if (s.Name != "node")
+            {
+                return false;
+            }
+
             var parent = s.GetAttributeString("parent");
             var sectionName = s.GetAttributeString("name") ?? "";
             var path = parent switch
@@ -46,16 +56,31 @@ public sealed class SceneEditor
             };
             return parentPath == "." || path == parentPath || path.StartsWith(subtreePrefix, StringComparison.Ordinal);
         });
-        if (insertAfter < 0) insertAfter = Document.Sections.FindLastIndex(s => s.Name == "node");
-        if (insertAfter >= 0) Document.Sections.Insert(insertAfter + 1, section);
-        else Document.Sections.Add(section);
+        if (insertAfter < 0)
+        {
+            insertAfter = Document.Sections.FindLastIndex(s => s.Name == "node");
+        }
+
+        if (insertAfter >= 0)
+        {
+            Document.Sections.Insert(insertAfter + 1, section);
+        }
+        else
+        {
+            Document.Sections.Add(section);
+        }
+
         return section;
     }
 
     public bool RemoveNode(string nodePath)
     {
         var section = SceneTreeBuilder.FindNodeSection(Document, nodePath);
-        if (section is null) return false;
+        if (section is null)
+        {
+            return false;
+        }
+
         var prefix = nodePath + "/";
         bool ReferencesRemovedNode(TscnSection connection, string key)
         {
@@ -96,7 +121,10 @@ public sealed class SceneEditor
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
         if (newName.Contains('/') || newName.Contains(':') || newName.Contains('@'))
+        {
             throw new ArgumentException($"'{newName}' is not a valid node name", nameof(newName));
+        }
+
         var section = SceneTreeBuilder.FindNodeSection(Document, nodePath)
             ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
         var isRoot = section.GetAttributeString("parent") is null;
@@ -104,9 +132,16 @@ public sealed class SceneEditor
             ? "."
             : nodePath.Contains('/') ? nodePath[..(nodePath.LastIndexOf('/') + 1)] + newName : newName;
         if (!isRoot && SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+        {
             throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+        }
+
         section.SetAttribute("name", new GodotString(newName));
-        if (isRoot) return;
+        if (isRoot)
+        {
+            return;
+        }
+
         var oldPrefix = nodePath + "/";
         var newPrefix = newPath + "/";
         string Rewrite(string path) =>
@@ -114,7 +149,9 @@ public sealed class SceneEditor
         foreach (var node in Document.Nodes)
         {
             if (node.GetAttributeString("parent") is { } parent && Rewrite(parent) is var rewritten && rewritten != parent)
+            {
                 node.SetAttribute("parent", new GodotString(rewritten));
+            }
         }
         foreach (var connection in Document.Connections)
         {
@@ -127,7 +164,9 @@ public sealed class SceneEditor
                     _ => null
                 };
                 if (value is not null && Rewrite(value) is var updated && updated != value)
+                {
                     connection.SetAttribute(key, new GodotString(updated));
+                }
             }
         }
     }
@@ -137,7 +176,9 @@ public sealed class SceneEditor
         ArgumentException.ThrowIfNullOrWhiteSpace(nodePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
         if (newName.Contains('/') || newName.Contains(':') || newName.Contains('@'))
+        {
             throw new ArgumentException($"'{newName}' is not a valid node name", nameof(newName));
+        }
 
         var sourceSection = SceneTreeBuilder.FindNodeSection(Document, nodePath)
             ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
@@ -152,7 +193,9 @@ public sealed class SceneEditor
                       sourceParent == "." ? newName :
                       $"{sourceParent}/{newName}";
         if (SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+        {
             throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+        }
 
         // Helper to check if a node path is in the subtree rooted at subtreeRootPath
         bool IsInSubtree(string path, string subtreeRootPath)
@@ -164,14 +207,20 @@ public sealed class SceneEditor
         var subtreeNodes = new List<TscnSection>();
         foreach (var section in Document.Sections)
         {
-            if (section.Name != "node") continue;
+            if (section.Name != "node")
+            {
+                continue;
+            }
+
             var parent = section.GetAttributeString("parent");
             var name = section.GetAttributeString("name") ?? "";
             var path = parent == null ? "." :
                        parent == "." ? name :
                        $"{parent}/{name}";
             if (IsInSubtree(path, nodePath))
+            {
                 subtreeNodes.Add(section);
+            }
         }
 
         // Create mapping from original node section to duplicated node section
@@ -184,10 +233,14 @@ public sealed class SceneEditor
             var copy = new TscnSection(original.Name);
             // Copy attributes
             foreach (var attr in original.Attributes)
+            {
                 copy.SetAttribute(attr.Key, attr.Value);
+            }
             // Copy properties
             foreach (var prop in original.Properties)
+            {
                 copy.SetProperty(prop.Key, prop.Value);
+            }
 
             if (original == sourceSection)
             {
@@ -245,7 +298,9 @@ public sealed class SceneEditor
                 var copy = new TscnSection(connection.Name);
                 // Copy attributes
                 foreach (var attr in connection.Attributes)
+                {
                     copy.SetAttribute(attr.Key, attr.Value);
+                }
                 // Update from and to to point to duplicated nodes
                 var fromSection = SceneTreeBuilder.FindNodeSection(Document, from);
                 var toSection = SceneTreeBuilder.FindNodeSection(Document, to);
@@ -285,14 +340,20 @@ public sealed class SceneEditor
         for (int i = 0; i < Document.Sections.Count; i++)
         {
             var section = Document.Sections[i];
-            if (section.Name != "node") continue;
+            if (section.Name != "node")
+            {
+                continue;
+            }
+
             var parent = section.GetAttributeString("parent");
             var name = section.GetAttributeString("name") ?? "";
             var path = parent == null ? "." :
                        parent == "." ? name :
                        $"{parent}/{name}";
             if (IsInSubtree(path, nodePath))
+            {
                 lastIndex = i;
+            }
         }
 
         if (lastIndex >= 0)
@@ -307,12 +368,16 @@ public sealed class SceneEditor
         {
             // Fallback: insert at end
             foreach (var node in duplicatedNodes)
+            {
                 Document.Sections.Add(node);
+            }
         }
 
         // Insert duplicated connections at the end of the document
         foreach (var conn in duplicatedConnections)
+        {
             Document.Sections.Add(conn);
+        }
     }
 
     public void MoveNode(string nodePath, string newParentPath)
@@ -320,17 +385,27 @@ public sealed class SceneEditor
         var section = SceneTreeBuilder.FindNodeSection(Document, nodePath)
             ?? throw new InvalidOperationException($"Node '{nodePath}' not found in {ScenePath}");
         if (newParentPath != "." && SceneTreeBuilder.FindNodeSection(Document, newParentPath) is null)
+        {
             throw new InvalidOperationException($"Parent node '{newParentPath}' not found in {ScenePath}");
+        }
+
         var oldPrefix = nodePath + "/";
         if (newParentPath == nodePath || newParentPath.StartsWith(oldPrefix, StringComparison.Ordinal))
+        {
             throw new InvalidOperationException($"Cannot move node '{nodePath}' under itself or one of its descendants");
+        }
+
         if (section.GetAttributeString("parent") is null)
+        {
             throw new InvalidOperationException("The scene root node cannot be moved");
+        }
 
         var name = section.GetAttributeString("name") ?? "";
         var newPath = newParentPath == "." ? name : $"{newParentPath}/{name}";
         if (newPath != nodePath && SceneTreeBuilder.FindNodeSection(Document, newPath) is not null)
+        {
             throw new InvalidOperationException($"A node already exists at '{newPath}' in {ScenePath}");
+        }
 
         var newPrefix = newPath + "/";
         string Rewrite(string path) =>
@@ -339,9 +414,15 @@ public sealed class SceneEditor
         section.SetAttribute("parent", new GodotString(newParentPath));
         foreach (var node in Document.Nodes)
         {
-            if (ReferenceEquals(node, section)) continue;
+            if (ReferenceEquals(node, section))
+            {
+                continue;
+            }
+
             if (node.GetAttributeString("parent") is { } parent && Rewrite(parent) is var rewritten && rewritten != parent)
+            {
                 node.SetAttribute("parent", new GodotString(rewritten));
+            }
         }
         foreach (var connection in Document.Connections)
         {
@@ -354,7 +435,9 @@ public sealed class SceneEditor
                     _ => null
                 };
                 if (value is not null && Rewrite(value) is var updated && updated != value)
+                {
                     connection.SetAttribute(key, new GodotString(updated));
+                }
             }
         }
     }
@@ -364,11 +447,21 @@ public sealed class SceneEditor
         ArgumentException.ThrowIfNullOrWhiteSpace(signal);
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
         if (SceneTreeBuilder.FindNodeSection(Document, fromPath) is null)
+        {
             throw new InvalidOperationException($"Node '{fromPath}' not found in {ScenePath}");
+        }
+
         if (SceneTreeBuilder.FindNodeSection(Document, toPath) is null)
+        {
             throw new InvalidOperationException($"Node '{toPath}' not found in {ScenePath}");
+        }
+
         var existing = FindConnection(signal, fromPath, toPath, method);
-        if (existing is not null) return existing;
+        if (existing is not null)
+        {
+            return existing;
+        }
+
         var section = new TscnSection("connection");
         section.SetAttribute("signal", new GodotString(signal));
         section.SetAttribute("from", new GodotString(fromPath));
@@ -381,7 +474,11 @@ public sealed class SceneEditor
     public bool DisconnectSignal(string signal, string fromPath, string toPath, string method)
     {
         var section = FindConnection(signal, fromPath, toPath, method);
-        if (section is null) return false;
+        if (section is null)
+        {
+            return false;
+        }
+
         Document.Sections.Remove(section);
         return true;
     }
@@ -402,7 +499,11 @@ public sealed class SceneEditor
         var resolvedPath = Project.ResolveResPath(resPath);
 
         var existing = Document.ExtResources.FirstOrDefault(s => s.GetAttributeString("path") == resPath);
-        if (existing is not null) return existing.GetAttributeString("id") ?? "";
+        if (existing is not null)
+        {
+            return existing.GetAttributeString("id") ?? "";
+        }
+
         var index = Document.ExtResources.Count() + 1;
         // Extract filename safely from the resolved path to avoid directory traversal in the ID
         var fileName = Path.GetFileNameWithoutExtension(resolvedPath).ToLowerInvariant();

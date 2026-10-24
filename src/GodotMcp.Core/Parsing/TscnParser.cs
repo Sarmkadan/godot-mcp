@@ -6,7 +6,9 @@ public static class TscnParser
     {
         ArgumentNullException.ThrowIfNull(text);
         if (string.IsNullOrWhiteSpace(text))
+        {
             throw new GodotParseException("Cannot parse an empty or whitespace-only TSCN document", 0);
+        }
 
         var reader = new GodotValueReader(text);
         var pending = ReadComments(reader);
@@ -34,7 +36,10 @@ public static class TscnParser
             reader.Expect('=');
             var value = reader.ReadValue();
             current.Properties.Add(new KeyValuePair<string, GodotValue>(key, value));
-            if (pending.Count > 0) current.PropertyComments[key] = pending;
+            if (pending.Count > 0)
+            {
+                current.PropertyComments[key] = pending;
+            }
         }
         return document;
     }
@@ -58,20 +63,30 @@ public static class TscnParser
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (!File.Exists(path))
+        {
             throw new FileNotFoundException($"TSCN file not found: '{path}'", path);
+        }
 
         return Parse(File.ReadAllText(path));
     }
 
     static TscnSection? ParseSectionHeader(GodotValueReader reader)
     {
-        if (!reader.TryConsume('[')) return null;
+        if (!reader.TryConsume('['))
+        {
+            return null;
+        }
+
         reader.SkipWhitespaceAndComments();
         var section = new TscnSection(reader.ReadIdentifier());
         while (true)
         {
             reader.SkipWhitespaceAndComments();
-            if (reader.TryConsume(']')) break;
+            if (reader.TryConsume(']'))
+            {
+                break;
+            }
+
             var key = reader.ReadIdentifier();
             reader.Expect('=');
             var value = reader.ReadValue();
@@ -83,7 +98,11 @@ public static class TscnParser
     static string ParsePropertyKey(GodotValueReader reader)
     {
         reader.SkipWhitespaceAndComments();
-        if (!reader.AtEnd && reader.PeekChar() == '"') return reader.ReadQuotedString();
+        if (!reader.AtEnd && reader.PeekChar() == '"')
+        {
+            return reader.ReadQuotedString();
+        }
+
         return reader.ReadPropertyPath();
     }
 }

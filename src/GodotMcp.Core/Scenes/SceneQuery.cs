@@ -6,9 +6,16 @@ public static class SceneQuery
 {
     public static IEnumerable<NodeInfo> AllNodes(SceneTree tree)
     {
-        if (tree.Root is null) yield break;
+        if (tree.Root is null)
+        {
+            yield break;
+        }
+
         yield return tree.Root;
-        foreach (var node in tree.Root.Descendants()) yield return node;
+        foreach (var node in tree.Root.Descendants())
+        {
+            yield return node;
+        }
     }
 
     public static IEnumerable<NodeInfo> FindByType(SceneTree tree, string type, bool exact = true) =>
@@ -36,17 +43,39 @@ public static class SceneQuery
     {
         while (true)
         {
-            if (pattern.IsEmpty) return text.IsEmpty;
+            if (pattern.IsEmpty)
+            {
+                return text.IsEmpty;
+            }
+
             if (pattern[0] == '*')
             {
                 pattern = pattern[1..];
-                if (pattern.IsEmpty) return true;
+                if (pattern.IsEmpty)
+                {
+                    return true;
+                }
+
                 for (var i = 0; i <= text.Length; i++)
-                    if (MatchesWildcard(text[i..], pattern)) return true;
+                {
+                    if (MatchesWildcard(text[i..], pattern))
+                    {
+                        return true;
+                    }
+                }
+
                 return false;
             }
-            if (text.IsEmpty) return false;
-            if (pattern[0] != '?' && char.ToUpperInvariant(text[0]) != char.ToUpperInvariant(pattern[0])) return false;
+            if (text.IsEmpty)
+            {
+                return false;
+            }
+
+            if (pattern[0] != '?' && char.ToUpperInvariant(text[0]) != char.ToUpperInvariant(pattern[0]))
+            {
+                return false;
+            }
+
             text = text[1..];
             pattern = pattern[1..];
         }

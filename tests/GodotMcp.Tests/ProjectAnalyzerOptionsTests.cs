@@ -32,7 +32,10 @@ public class ProjectAnalyzerOptionsTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, recursive: true);
+        }
     }
 
     [Fact]
@@ -332,7 +335,10 @@ public class ProjectAnalyzerOptionsTests : IDisposable
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "src", "GodotMcp.Server", "appsettings.json");
-            if (File.Exists(candidate)) return candidate;
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
         }
         throw new FileNotFoundException("Could not locate src/GodotMcp.Server/appsettings.json from the test output directory.");
     }

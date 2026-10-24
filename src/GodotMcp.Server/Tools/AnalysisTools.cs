@@ -20,7 +20,10 @@ public sealed class AnalysisTools(ProjectLocator locator, IOptions<ProjectAnalyz
         string? projectPath = null)
     {
         if (type is null && namePattern is null && group is null)
+        {
             throw new ArgumentException("Provide at least one of: type, namePattern, group");
+        }
+
         var analyzer = CreateAnalyzer(projectPath);
         return analyzer.FindNodes(type, namePattern, group)
             .Select(m => new NodeMatchResult(m.ScenePath, m.NodePath, m.Name, m.Type))
@@ -44,7 +47,10 @@ public sealed class AnalysisTools(ProjectLocator locator, IOptions<ProjectAnalyz
             IReadOnlyList<SceneIssue> issues;
             try { issues = SceneValidator.Validate(project, scenePath); }
             catch (Exception e) { issues = [new SceneIssue(IssueSeverity.Error, "parse-error", e.Message)]; }
-            if (issues.Count > 0) results.Add(ValidationResult.From(scenePath, issues));
+            if (issues.Count > 0)
+            {
+                results.Add(ValidationResult.From(scenePath, issues));
+            }
         }
         return results;
     }

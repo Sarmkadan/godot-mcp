@@ -14,8 +14,14 @@ public readonly record struct GodotVersion(int Major, int Minor, int Patch = 0, 
         var status = "stable";
         for (var i = 2; i < parts.Length; i++)
         {
-            if (int.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var p)) patch = p;
-            else status = parts[i];
+            if (int.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var p))
+            {
+                patch = p;
+            }
+            else
+            {
+                status = parts[i];
+            }
         }
         return new GodotVersion(major, minor, patch, status);
     }
@@ -23,7 +29,11 @@ public readonly record struct GodotVersion(int Major, int Minor, int Patch = 0, 
     public static bool TryParse(string? text, out GodotVersion version)
     {
         version = default;
-        if (string.IsNullOrWhiteSpace(text) || !char.IsDigit(text.TrimStart()[0])) return false;
+        if (string.IsNullOrWhiteSpace(text) || !char.IsDigit(text.TrimStart()[0]))
+        {
+            return false;
+        }
+
         version = Parse(text);
         return version.Major > 0;
     }

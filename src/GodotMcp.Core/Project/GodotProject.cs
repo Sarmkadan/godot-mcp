@@ -23,7 +23,11 @@ public sealed partial class GodotProject
     public static GodotProject Open(string rootPath)
     {
         var project = new GodotProject(rootPath);
-        if (!project.Exists) throw new FileNotFoundException("project.godot not found", project.ProjectFilePath);
+        if (!project.Exists)
+        {
+            throw new FileNotFoundException("project.godot not found", project.ProjectFilePath);
+        }
+
         return project;
     }
 
@@ -91,10 +95,21 @@ public sealed partial class GodotProject
         foreach (var file in WalkFiles(RootPath, 0, scan, ignored))
         {
             var extension = Path.GetExtension(file);
-            if (wanted.Count > 0 && !wanted.Contains(extension)) continue;
-            if (restricted.Count > 0 && !restricted.Contains(extension)) continue;
+            if (wanted.Count > 0 && !wanted.Contains(extension))
+            {
+                continue;
+            }
+
+            if (restricted.Count > 0 && !restricted.Contains(extension))
+            {
+                continue;
+            }
+
             if (scan.MaxFileCount > 0 && ++count > scan.MaxFileCount)
+            {
                 throw new InvalidOperationException($"Project scan matched more than {scan.MaxFileCount} files; raise ProjectAnalyzer:MaxFileCount or narrow the extension filters.");
+            }
+
             yield return ToResPath(file);
         }
     }
@@ -102,15 +117,31 @@ public sealed partial class GodotProject
     static IEnumerable<string> WalkFiles(string directory, int depth, ProjectAnalyzerOptions scan, HashSet<string> ignored)
     {
         foreach (var file in Directory.EnumerateFiles(directory))
+        {
             yield return file;
-        if (scan.MaxScanDepth > 0 && depth >= scan.MaxScanDepth) yield break;
+        }
+
+        if (scan.MaxScanDepth > 0 && depth >= scan.MaxScanDepth)
+        {
+            yield break;
+        }
+
         foreach (var subdirectory in Directory.EnumerateDirectories(directory))
         {
-            if (ignored.Contains(Path.GetFileName(subdirectory))) continue;
+            if (ignored.Contains(Path.GetFileName(subdirectory)))
+            {
+                continue;
+            }
             // Symbolic links are not followed, so a link cannot loop back into the tree.
-            if ((File.GetAttributes(subdirectory) & FileAttributes.ReparsePoint) != 0) continue;
+            if ((File.GetAttributes(subdirectory) & FileAttributes.ReparsePoint) != 0)
+            {
+                continue;
+            }
+
             foreach (var file in WalkFiles(subdirectory, depth + 1, scan, ignored))
+            {
                 yield return file;
+            }
         }
     }
 
@@ -144,9 +175,16 @@ public sealed partial class GodotProject
         else
         {
             var nameMatch = GdClassNameRegex().Match(text);
-            if (nameMatch.Success) className = nameMatch.Groups[1].Value;
+            if (nameMatch.Success)
+            {
+                className = nameMatch.Groups[1].Value;
+            }
+
             var extendsMatch = GdExtendsRegex().Match(text);
-            if (extendsMatch.Success) baseType = extendsMatch.Groups[1].Value;
+            if (extendsMatch.Success)
+            {
+                baseType = extendsMatch.Groups[1].Value;
+            }
         }
         return new ScriptInfo(resPath, language, className, baseType);
     }

@@ -41,8 +41,14 @@ public static class SceneTreeBuilder
                 continue;
             }
             byPath[node.Path] = node;
-            if (byPath.TryGetValue(node.Parent, out var parent)) parent.Children.Add(node);
-            else root?.FindByPath(node.Parent)?.Children.Add(node);
+            if (byPath.TryGetValue(node.Parent, out var parent))
+            {
+                parent.Children.Add(node);
+            }
+            else
+            {
+                root?.FindByPath(node.Parent)?.Children.Add(node);
+            }
         }
         var connections = document.Connections
             .Select(s => new SignalConnection(
@@ -79,7 +85,10 @@ public static class SceneTreeBuilder
             Groups = groups
         };
         foreach (var (key, value) in section.Properties)
+        {
             node.Properties.Add(new NodeProperty(key, value));
+        }
+
         return node;
     }
 
@@ -95,7 +104,10 @@ public static class SceneTreeBuilder
                 "." => name,
                 _ => $"{parent}/{name}"
             };
-            if (path == nodePath) return section;
+            if (path == nodePath)
+            {
+                return section;
+            }
         }
         return null;
     }
