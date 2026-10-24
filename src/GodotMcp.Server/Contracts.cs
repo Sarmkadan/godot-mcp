@@ -21,7 +21,14 @@ public sealed record SceneTreeResult(string ScenePath, string? Uid, long Format,
 
 public sealed record ExternalResourceResult(string Id, string Type, string Path, string? Uid);
 
-public sealed record ConnectionResult(string Signal, string From, string To, string Method);
+/// <summary>A signal connection as returned to MCP clients.</summary>
+/// <param name="Signal">Name of the emitted signal.</param>
+/// <param name="From">Path of the emitting node.</param>
+/// <param name="To">Path of the receiving node.</param>
+/// <param name="Method">Name of the handler method on the receiving node.</param>
+/// <param name="Flags">Godot <c>ConnectFlags</c> bitmask (1 = deferred, 2 = persist, 4 = one-shot, 8 = reference-counted); 0 when the scene does not set it.</param>
+/// <param name="Binds">Bound extra arguments in Godot text syntax; empty when the scene does not set them.</param>
+public sealed record ConnectionResult(string Signal, string From, string To, string Method, int Flags, IReadOnlyList<string> Binds);
 
 public sealed record ScriptResult(string Path, string Language, string? ClassName, string? BaseType);
 

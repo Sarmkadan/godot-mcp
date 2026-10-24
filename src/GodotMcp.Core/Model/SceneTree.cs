@@ -1,6 +1,13 @@
 namespace GodotMcp.Core.Model;
 
-public sealed record SignalConnection(string Signal, string From, string To, string Method, IReadOnlyList<string> Binds);
+/// <summary>A signal connection from a <c>[connection]</c> section.</summary>
+/// <param name="Signal">Name of the emitted signal.</param>
+/// <param name="From">Path of the emitting node.</param>
+/// <param name="To">Path of the receiving node.</param>
+/// <param name="Method">Name of the handler method on the receiving node.</param>
+/// <param name="Flags">Godot <c>ConnectFlags</c> bitmask (1 = deferred, 2 = persist, 4 = one-shot, 8 = reference-counted); 0 when absent.</param>
+/// <param name="Binds">Bound extra arguments, each in Godot text syntax; empty when absent.</param>
+public sealed record SignalConnection(string Signal, string From, string To, string Method, int Flags, IReadOnlyList<string> Binds);
 
 public sealed class SceneTree
 {

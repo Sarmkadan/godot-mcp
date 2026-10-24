@@ -56,6 +56,7 @@ public static class SceneTreeBuilder
                 s.GetAttributeString("from") ?? "",
                 s.GetAttributeString("to") ?? "",
                 s.GetAttributeString("method") ?? "",
+                (int)(s.GetAttributeInt("flags") ?? 0),
                 s.GetAttribute("binds") is GodotArray a ? a.Items.Select(v => v.ToTscnString()).ToList() : []))
             .ToList();
         return new SceneTree
