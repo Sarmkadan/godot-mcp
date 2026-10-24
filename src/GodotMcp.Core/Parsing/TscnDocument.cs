@@ -23,22 +23,38 @@ public sealed class TscnSection(string name)
     {
         var index = Attributes.FindIndex(a => a.Key == key);
         var pair = new KeyValuePair<string, GodotValue>(key, value);
-        if (index >= 0) Attributes[index] = pair;
-        else Attributes.Add(pair);
+        if (index >= 0)
+        {
+            Attributes[index] = pair;
+        }
+        else
+        {
+            Attributes.Add(pair);
+        }
     }
 
     public void SetProperty(string key, GodotValue value)
     {
         var index = Properties.FindIndex(p => p.Key == key);
         var pair = new KeyValuePair<string, GodotValue>(key, value);
-        if (index >= 0) Properties[index] = pair;
-        else Properties.Add(pair);
+        if (index >= 0)
+        {
+            Properties[index] = pair;
+        }
+        else
+        {
+            Properties.Add(pair);
+        }
     }
 
     public bool RemoveProperty(string key)
     {
         var index = Properties.FindIndex(p => p.Key == key);
-        if (index < 0) return false;
+        if (index < 0)
+        {
+            return false;
+        }
+
         Properties.RemoveAt(index);
         PropertyComments.Remove(key);
         return true;
@@ -56,7 +72,11 @@ public sealed class TscnSection(string name)
         sb.Append("]\n");
         foreach (var (key, value) in Properties)
         {
-            if (PropertyComments.TryGetValue(key, out var comments)) WriteLines(sb, comments);
+            if (PropertyComments.TryGetValue(key, out var comments))
+            {
+                WriteLines(sb, comments);
+            }
+
             sb.Append(key).Append(" = ");
             value.Write(sb);
             sb.Append('\n');
@@ -65,7 +85,10 @@ public sealed class TscnSection(string name)
 
     static void WriteLines(StringBuilder sb, IEnumerable<string> lines)
     {
-        foreach (var line in lines) sb.Append(line).Append('\n');
+        foreach (var line in lines)
+        {
+            sb.Append(line).Append('\n');
+        }
     }
 }
 
@@ -103,7 +126,10 @@ public sealed class TscnDocument(TscnSection descriptor)
         if (TrailingComments.Count > 0)
         {
             sb.Append('\n');
-            foreach (var line in TrailingComments) sb.Append(line).Append('\n');
+            foreach (var line in TrailingComments)
+            {
+                sb.Append(line).Append('\n');
+            }
         }
         return sb.ToString();
     }

@@ -14,7 +14,11 @@ public sealed class SceneTools(ProjectLocator locator)
     public SceneTreeResult? GetSceneTree([Description("Scene path as res:// or project-relative")] string scenePath, string? projectPath = null)
     {
         var tree = TryLoadScene(locator.Resolve(projectPath), scenePath);
-        if (tree is null) return null;
+        if (tree is null)
+        {
+            return null;
+        }
+
         return new SceneTreeResult(
             tree.ScenePath, tree.Uid, tree.Format, tree.NodeCount,
             tree.Root is null ? null : NodeResult.From(tree.Root, recurse: true),
@@ -43,7 +47,11 @@ public sealed class SceneTools(ProjectLocator locator)
     {
         var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
         var removed = editor.RemoveNode(nodePath);
-        if (removed) editor.Save();
+        if (removed)
+        {
+            editor.Save();
+        }
+
         return new MutationResult(removed, scenePath, removed ? $"Removed node '{nodePath}'" : $"Node '{nodePath}' not found");
     }
 
@@ -79,7 +87,11 @@ public sealed class SceneTools(ProjectLocator locator)
     {
         var editor = new SceneEditor(locator.Resolve(projectPath), scenePath);
         var removed = editor.DisconnectSignal(signal, fromPath, toPath, method);
-        if (removed) editor.Save();
+        if (removed)
+        {
+            editor.Save();
+        }
+
         return new MutationResult(removed, scenePath, removed
             ? $"Disconnected {fromPath}.{signal} -> {toPath}.{method}"
             : "No matching connection found");
@@ -103,7 +115,11 @@ public sealed class SceneTools(ProjectLocator locator)
     /// </summary>
     static SceneTree? TryLoadScene(GodotProject project, string scenePath)
     {
-        if (string.IsNullOrWhiteSpace(scenePath)) return null;
+        if (string.IsNullOrWhiteSpace(scenePath))
+        {
+            return null;
+        }
+
         return File.Exists(project.ResolveResPath(scenePath)) ? project.LoadScene(scenePath) : null;
     }
 

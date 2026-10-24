@@ -17,8 +17,16 @@ public sealed class HeadlessRunner(GodotProject project, GodotExecutable executa
         }
 
         var args = new List<string> { "--headless", "--path", Project.RootPath };
-        if (scene is not null) args.Add(scene);
-        if (extraArgs is not null) args.AddRange(extraArgs);
+        if (scene is not null)
+        {
+            args.Add(scene);
+        }
+
+        if (extraArgs is not null)
+        {
+            args.AddRange(extraArgs);
+        }
+
         return Executable.RunAsync(args, Project.RootPath, DefaultTimeout, onOutputLine, cancellationToken);
     }
 

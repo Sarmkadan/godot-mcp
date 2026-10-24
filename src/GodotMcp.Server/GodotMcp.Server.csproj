@@ -2,15 +2,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
     <RootNamespace>GodotMcp.Server</RootNamespace>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>godot-mcp</ToolCommandName>
     <PackageId>GodotMcp</PackageId>
     <Version>0.1.0</Version>
-    <Authors>Vladyslav Zaiets</Authors>
     <Company>Vladyslav Zaiets</Company>
     <Description>MCP server for Godot 4 projects: scene tree inspection, node and property editing, resource and script tools - works on project files directly, no Godot install required.</Description>
     <PackageTags>godot;mcp;model-context-protocol</PackageTags>
@@ -22,7 +18,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Public DTOs/tools are self-describing (record parameters, [Description]); don't fail the pack on missing XML comments. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

@@ -115,12 +115,17 @@ public sealed class PathResolver
         ArgumentNullException.ThrowIfNull(path);
 
         if (string.IsNullOrWhiteSpace(path))
+        {
             return false;
+        }
 
         // Check for obvious traversal attempts
         var normalized = path.Replace('\\', '/');
         if (!normalized.StartsWith("res://", StringComparison.Ordinal) && Path.IsPathRooted(path))
+        {
             return false;
+        }
+
         if (normalized.Contains("/../") ||
             normalized.StartsWith("../", StringComparison.Ordinal) ||
             normalized.StartsWith("..\\", StringComparison.Ordinal))
@@ -144,7 +149,9 @@ public sealed class PathResolver
     private static string NormalizePath(string path)
     {
         if (string.IsNullOrEmpty(path))
+        {
             return path;
+        }
 
         // Convert all separators to forward slashes for consistent handling
         var normalized = path.Replace('\\', '/');

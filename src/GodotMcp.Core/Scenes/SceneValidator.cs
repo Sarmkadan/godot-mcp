@@ -32,16 +32,23 @@ public static class SceneValidator
             var id = resource.GetAttributeString("id") ?? "";
             var path = resource.GetAttributeString("path") ?? "";
             if (path.StartsWith("res://") && !File.Exists(project.ResolveResPath(path)))
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "missing-file", $"ext_resource '{id}' points to missing file '{path}'"));
+            }
+
             if (!referenced.Contains(id))
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Warning, "unused-ext-resource", $"ext_resource '{id}' ('{path}') is never referenced"));
+            }
         }
         var seenIds = new HashSet<string>();
         foreach (var resource in document.ExtResources)
         {
             var id = resource.GetAttributeString("id") ?? "";
             if (!seenIds.Add(id))
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "duplicate-resource-id", $"ext_resource id '{id}' is declared more than once"));
+            }
         }
     }
 
@@ -52,12 +59,16 @@ public static class SceneValidator
         {
             var id = resource.GetAttributeString("id") ?? "";
             if (!referenced.Contains(id))
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Warning, "orphan-sub-resource", $"sub_resource '{id}' ({resource.GetAttributeString("type")}) is never referenced"));
+            }
         }
         foreach (var id in referenced)
         {
             if (document.FindSubResource(id) is null)
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "missing-sub-resource", $"SubResource(\"{id}\") is referenced but not declared"));
+            }
         }
     }
 
@@ -69,13 +80,24 @@ public static class SceneValidator
             var path = NodePathOf(node);
             var name = node.GetAttributeString("name") ?? "";
             if (!paths.Add(path))
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "duplicate-node-path", $"more than one node at path '{path}'"));
+            }
+
             if (node.GetAttributeString("type") is null && node.GetAttribute("instance") is null && node.GetAttributeString("parent") is not null && node.GetAttribute("index") is null)
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "untyped-node", $"node '{path}' has neither a type nor an instance"));
+            }
+
             if (node.GetAttributeString("parent") is { } parent && parent != "." && !paths.Contains(parent) && FindByPath(document, parent) is null)
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "missing-parent", $"node '{name}' declares parent '{parent}' which does not exist"));
+            }
+
             foreach (var (_, value) in node.Properties)
+            {
                 CheckExtRefs(document, value, path, issues);
+            }
         }
     }
 
@@ -88,7 +110,9 @@ public static class SceneValidator
             {
                 var endpoint = connection.GetAttributeString(key);
                 if (endpoint is not null && FindByPath(document, endpoint) is null && !HasInstancedAncestor(document, endpoint))
+                {
                     issues.Add(new SceneIssue(IssueSeverity.Error, "dangling-connection", $"connection '{signal}' has {key}='{endpoint}' but no such node exists"));
+                }
             }
             var method = connection.GetAttributeString("method") ?? "";
             var target = connection.GetAttributeString("to") is { } to ? FindByPath(document, to) : null;
@@ -100,7 +124,9 @@ public static class SceneValidator
             {
                 var text = File.ReadAllText(project.ResolveResPath(scriptPath));
                 if (!text.Contains($"func {method}(") && !text.Contains($"func {method} ("))
+                {
                     issues.Add(new SceneIssue(IssueSeverity.Warning, "missing-handler", $"connection '{signal}' targets method '{method}' which is not defined in '{scriptPath}'"));
+                }
             }
         }
     }
@@ -110,9 +136,20 @@ public static class SceneValidator
         var ids = new HashSet<string>();
         foreach (var section in document.Sections)
         {
-            if (section.Name == "ext_resource") continue;
-            foreach (var (_, value) in section.Properties) Collect(value, "ExtResource", ids);
-            foreach (var (_, value) in section.Attributes) Collect(value, "ExtResource", ids);
+            if (section.Name == "ext_resource")
+            {
+                continue;
+            }
+
+            foreach (var (_, value) in section.Properties)
+            {
+                Collect(value, "ExtResource", ids);
+            }
+
+            foreach (var (_, value) in section.Attributes)
+            {
+                Collect(value, "ExtResource", ids);
+            }
         }
         return ids;
     }
@@ -122,8 +159,15 @@ public static class SceneValidator
         var ids = new HashSet<string>();
         foreach (var section in document.Sections)
         {
-            foreach (var (_, value) in section.Properties) Collect(value, "SubResource", ids);
-            foreach (var (_, value) in section.Attributes) Collect(value, "SubResource", ids);
+            foreach (var (_, value) in section.Properties)
+            {
+                Collect(value, "SubResource", ids);
+            }
+
+            foreach (var (_, value) in section.Attributes)
+            {
+                Collect(value, "SubResource", ids);
+            }
         }
         return ids;
     }
@@ -136,10 +180,18 @@ public static class SceneValidator
                 ids.Add(id);
                 break;
             case GodotConstructor c:
-                foreach (var arg in c.Arguments) Collect(arg, constructorName, ids);
+                foreach (var arg in c.Arguments)
+                {
+                    Collect(arg, constructorName, ids);
+                }
+
                 break;
             case GodotArray a:
-                foreach (var item in a.Items) Collect(item, constructorName, ids);
+                foreach (var item in a.Items)
+                {
+                    Collect(item, constructorName, ids);
+                }
+
                 break;
             case GodotDictionary d:
                 foreach (var (k, v) in d.Entries)
@@ -158,7 +210,9 @@ public static class SceneValidator
         foreach (var id in ids)
         {
             if (document.FindExtResource(id) is null)
+            {
                 issues.Add(new SceneIssue(IssueSeverity.Error, "missing-ext-resource", $"node '{nodePath}' references ExtResource(\"{id}\") which is not declared"));
+            }
         }
     }
 
@@ -171,8 +225,15 @@ public static class SceneValidator
         {
             var slash = current.LastIndexOf('/');
             current = slash < 0 ? "." : current[..slash];
-            if (FindByPath(document, current) is { } ancestor && ancestor.GetAttribute("instance") is not null) return true;
-            if (current == ".") return false;
+            if (FindByPath(document, current) is { } ancestor && ancestor.GetAttribute("instance") is not null)
+            {
+                return true;
+            }
+
+            if (current == ".")
+            {
+                return false;
+            }
         }
     }
 

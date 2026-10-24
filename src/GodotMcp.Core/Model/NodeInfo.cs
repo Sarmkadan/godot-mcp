@@ -22,12 +22,19 @@ public sealed class NodeInfo
 
     public NodeInfo? FindByPath(string path)
     {
-        if (path is "." or "") return this;
+        if (path is "." or "")
+        {
+            return this;
+        }
+
         var current = this;
         foreach (var segment in path.Split('/'))
         {
             current = current.FindChild(segment);
-            if (current is null) return null;
+            if (current is null)
+            {
+                return null;
+            }
         }
         return current;
     }
@@ -37,7 +44,10 @@ public sealed class NodeInfo
         foreach (var child in Children)
         {
             yield return child;
-            foreach (var d in child.Descendants()) yield return d;
+            foreach (var d in child.Descendants())
+            {
+                yield return d;
+            }
         }
     }
 }

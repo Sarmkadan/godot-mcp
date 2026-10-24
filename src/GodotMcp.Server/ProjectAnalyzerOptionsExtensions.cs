@@ -24,8 +24,15 @@ public static class ProjectAnalyzerOptionsExtensions
             // The binder appends to list properties, so a configured list must replace the built-in defaults instead of extending them.
             .Configure(o =>
             {
-                if (section.GetSection(nameof(ProjectAnalyzerOptions.IgnoredDirectories)).Exists()) o.IgnoredDirectories = [];
-                if (section.GetSection(nameof(ProjectAnalyzerOptions.ExtensionFilters)).Exists()) o.ExtensionFilters = [];
+                if (section.GetSection(nameof(ProjectAnalyzerOptions.IgnoredDirectories)).Exists())
+                {
+                    o.IgnoredDirectories = [];
+                }
+
+                if (section.GetSection(nameof(ProjectAnalyzerOptions.ExtensionFilters)).Exists())
+                {
+                    o.ExtensionFilters = [];
+                }
             })
             .Bind(section)
             .ValidateOnStart();

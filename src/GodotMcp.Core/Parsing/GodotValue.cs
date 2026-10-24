@@ -76,14 +76,26 @@ public sealed record GodotFloat(double Value) : GodotValue
     public override GodotValueKind Kind => GodotValueKind.Float;
     public override void Write(StringBuilder sb)
     {
-        if (double.IsPositiveInfinity(Value)) sb.Append("inf");
-        else if (double.IsNegativeInfinity(Value)) sb.Append("-inf");
-        else if (double.IsNaN(Value)) sb.Append("nan");
+        if (double.IsPositiveInfinity(Value))
+        {
+            sb.Append("inf");
+        }
+        else if (double.IsNegativeInfinity(Value))
+        {
+            sb.Append("-inf");
+        }
+        else if (double.IsNaN(Value))
+        {
+            sb.Append("nan");
+        }
         else
         {
             var text = Value.ToString("R", CultureInfo.InvariantCulture);
             sb.Append(text);
-            if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E')) sb.Append(".0");
+            if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E'))
+            {
+                sb.Append(".0");
+            }
         }
     }
 }
@@ -127,7 +139,11 @@ public sealed record GodotArray(IReadOnlyList<GodotValue> Items) : GodotValue
         sb.Append('[');
         for (var i = 0; i < Items.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
+            if (i > 0)
+            {
+                sb.Append(", ");
+            }
+
             Items[i].Write(sb);
         }
         sb.Append(']');
@@ -148,7 +164,11 @@ public sealed record GodotDictionary(IReadOnlyList<KeyValuePair<GodotValue, Godo
         sb.Append('{');
         for (var i = 0; i < Entries.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
+            if (i > 0)
+            {
+                sb.Append(", ");
+            }
+
             Entries[i].Key.Write(sb);
             sb.Append(": ");
             Entries[i].Value.Write(sb);
@@ -174,7 +194,11 @@ public sealed record GodotConstructor(string Name, IReadOnlyList<GodotValue> Arg
         sb.Append(Name).Append('(');
         for (var i = 0; i < Arguments.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
+            if (i > 0)
+            {
+                sb.Append(", ");
+            }
+
             Arguments[i].Write(sb);
         }
         sb.Append(')');
