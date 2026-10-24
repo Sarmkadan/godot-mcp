@@ -23,7 +23,7 @@ public sealed class SceneTools(ProjectLocator locator)
             tree.ScenePath, tree.Uid, tree.Format, tree.NodeCount,
             tree.Root is null ? null : NodeResult.From(tree.Root, recurse: true),
             tree.ExternalResources.Select(r => new ExternalResourceResult(r.Id, r.Type, r.Path, r.Uid)).ToList(),
-            tree.Connections.Select(c => new ConnectionResult(c.Signal, c.From, c.To, c.Method)).ToList());
+            tree.Connections.Select(c => new ConnectionResult(c.Signal, c.From, c.To, c.Method, c.Flags, c.Binds)).ToList());
     }
 
     [McpServerTool(Name = "godot_get_node"), Description("Get a single node from a scene by its scene-tree path, including its properties.")]
